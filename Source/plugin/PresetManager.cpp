@@ -1,5 +1,7 @@
 #include "PresetManager.h"
 #include "ChordMonkeyProcessor.h"
+#include "../core/model/ChordSetLibrary.h"
+#include "../core/model/ChordSets.h"
 
 namespace chordmonkey
 {
@@ -141,12 +143,27 @@ namespace chordmonkey
         const auto& p = all[(size_t) index];
         tree.setProperty ("name", p.name, nullptr);
         tree.setProperty ("category", p.category, nullptr);
+        int key = 0;
         for (const auto& [id, value] : p.values)
         {
             juce::ValueTree param ("PARAM");
             param.setProperty ("id", id, nullptr);
             param.setProperty ("value", value, nullptr);
             tree.appendChild (param, nullptr);
+            if (id == params::key)
+                key = (int) value;
+        }
+        if (p.hasWorkspace())
+        {
+            Workspace w;
+            for (size_t i = 0; i < p.chordSets.size(); ++i)
+                if (const auto* set = p.chordSets[i] != nullptr ? findChordSet (p.chordSets[i]) : nullptr)
+                {
+                    std::string error;
+                    parseProgression (set->progression, key, w.patterns[i], error);
+                    jassert (error.empty());
+                }
+            tree.appendChild (ChordMonkeyProcessor::workspaceToTree (w), nullptr);
         }
         return tree;
     }

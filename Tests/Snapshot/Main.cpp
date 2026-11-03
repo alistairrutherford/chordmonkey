@@ -35,6 +35,9 @@
 //                 Test workspace is on; a workspace set on the message thread plays (Play,
 //                 Pattern) in processBlock with no allocation (Phase 2); Bind keys choose the
 //                 pattern (the parameter follows) and the pads ignore Bind (Phase 3)
+//   8. chord sets the Songwriting presets fill the workspace, others leave it, user presets
+//                 hold it, a ChordChimp preset loads, chord sets load (with suggestions) and save
+//                 (Phase 5)
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -49,6 +52,7 @@
 #include "../../Source/plugin/ChordMonkeyProcessor.h"
 #include "../../Source/ui/ChordMonkeyEditor.h"
 #include "../../Source/core/model/ChordSets.h"
+#include "../../Source/core/model/ChordSetLibrary.h"
 #include <chrono>
 #include <iostream>
 #include <pthread.h>
@@ -239,8 +243,14 @@ namespace
             const auto* chordism = json["presets"].getArray();
             const auto& defaults = json["defaults"];
             const auto& factory = factoryPresets();
-            check (chordism != nullptr && chordism->size() == (int) factory.size(),
-                   juce::String (factory.size()) + " factory presets, as in Chordism (" + json["chordism"].toString() + ")");
+            // Chordism's come first, in its order; ChordMonkey's Songwriting presets (Phase 5) follow.
+            int songwriting = 0;
+            for (const auto& f : factory)
+                songwriting += f.category == "Songwriting" ? 1 : 0;
+            check (chordism != nullptr && chordism->size() + songwriting == (int) factory.size() && songwriting >= 10
+                       && factory[(size_t) chordism->size()].category == "Songwriting",
+                   juce::String (chordism != nullptr ? chordism->size() : 0) + " factory presets as in Chordism (" + json["chordism"].toString()
+                       + "), then " + juce::String (songwriting) + " Songwriting presets");
 
             // Deliberate changes (ChordChimp's PLAN.md §3.4): Bright Melody's melody became a chord arp.
             auto changed = [] (const juce::String& name, const juce::String& id)
@@ -284,11 +294,12 @@ namespace
                     ++presetParameters;
             // 24 of Chordism's, and Phase 4's five (Voicing, Bass, Style, Swing, Humanize): Chordism has
             // none of them, so every factory preset leaves them at their defaults (0).
-            check (wrong == 0 && presetParameters == 29 && compared == (int) factory.size() * presetParameters - 3,
+            // ... and Pattern (a preset parameter since Phase 5, default A).
+            check (wrong == 0 && presetParameters == 30 && chordism != nullptr && compared == chordism->size() * presetParameters - 3,
                    juce::String (compared) + " preset values (every preset parameter of every preset) are Chordism's"
                        + (firstWrong.isEmpty() ? juce::String() : " (" + firstWrong + ")"));
-            p->setCurrentProgram ((int) factory.size() - 1);
-            check ((int) get (*p, params::arp) == (int) ArpPattern::LinearUp && (int) get (*p, params::arpRange) == 2,
+            p->setCurrentProgram (chordism != nullptr ? chordism->size() - 1 : 0);
+            check (p->getPresetName() == "Bright Melody" && (int) get (*p, params::arp) == (int) ArpPattern::LinearUp && (int) get (*p, params::arpRange) == 2,
                    "Bright Melody plays a chord arp (Linear Up, range 2) in place of its melody");
             set (*p, params::keyOctave, 1.0f);
             p->setCurrentProgram (2);
@@ -1242,8 +1253,8 @@ namespace
             check (ignoredWhileOff && q->getWorkspace() == want,
                    "Workspace.txt loads only while Test workspace is on: in D, a comment skipped, a blank and a bad line empty");
             check (! params::isPresetParameter (params::testWorkspace) && ! params::isPresetParameter (params::play)
-                       && ! params::isPresetParameter (params::pattern),
-                   "Play, Pattern and Test workspace aren't preset parameters");
+                       && params::isPresetParameter (params::pattern),
+                   "Play and Test workspace aren't preset parameters; Pattern is (Phase 5: presets hold the workspace)");
 
             if (hadFile)
                 file.replaceWithText (previous);
@@ -1373,6 +1384,138 @@ namespace
             else
                 keysFile.deleteFile();
         }
+    }
+}
+
+namespace
+{
+    // Chord sets and presets with the workspace (PLAN.md §3.5, Phase 5).
+    void testChordSetsAndPresets()
+    {
+        std::cout << "== chord sets and presets (Phase 5) ==\n";
+        auto p = std::make_unique<ChordMonkeyProcessor>();
+        p->prepareToPlay (48000.0, 512);
+        const auto& factory = factoryPresets();
+
+        // Every Songwriting preset fills patterns A-D with its chord sets in its Key, Pattern A.
+        int good = 0, songwriting = 0;
+        juce::String firstBad;
+        for (int i = 0; i < (int) factory.size(); ++i)
+        {
+            if (factory[(size_t) i].category != "Songwriting")
+                continue;
+            ++songwriting;
+            set (*p, params::pattern, 2.0f);
+            p->setCurrentProgram (i);
+            const auto w = p->getWorkspace();
+            const int key = (int) get (*p, params::key);
+            bool ok = (int) get (*p, params::pattern) == 0;
+            for (size_t k = 0; k < 4; ++k)
+            {
+                Pattern want;
+                std::string error;
+                const auto* set = findChordSet (factory[(size_t) i].chordSets[k]);
+                ok = ok && set != nullptr && parseProgression (set->progression, key, want, error) && w.patterns[k] == want;
+            }
+            good += ok ? 1 : 0;
+            if (! ok && firstBad.isEmpty())
+                firstBad = factory[(size_t) i].name;
+        }
+        check (good == songwriting && songwriting >= 10, juce::String (good) + " of " + juce::String (songwriting)
+                                                             + " Songwriting presets fill A-D with their chord sets in their Key and choose A"
+                                                             + (firstBad.isEmpty() ? juce::String() : " (first wrong: " + firstBad + ")"));
+
+        const auto filled = p->getWorkspace();
+        p->setCurrentProgram (0);
+        const bool initKeeps = p->getWorkspace() == filled;
+        p->setCurrentProgram (1);
+        check (initKeeps && p->getWorkspace() == filled, "Init and Chordism's presets (no workspace) leave the workspace alone");
+
+        // A user preset holds the workspace.
+        const juce::String category ("ZZ ChordMonkey Test");
+        const auto folder = PresetManager::userFolder().getChildFile (category);
+        p->presets.save ("With Workspace", category);
+        const auto file = folder.getChildFile ("With Workspace.xml");
+        const auto saved = PresetManager::readFile (file);
+        p->setWorkspace (Workspace {});
+        p->presets.rescan();
+        int index = -1;
+        for (int i = 0; i < p->presets.getEntries().size(); ++i)
+            if (p->presets.getEntries()[i].file == file)
+                index = i;
+        p->presets.load (index);
+        check (saved.getChildWithName ("WORKSPACE").isValid() && index >= 0 && p->getWorkspace() == filled,
+               "a saved preset holds the workspace, and loading it brings it back");
+
+        // A ChordChimp preset file loads.
+        const auto chimp = folder.getChildFile ("From ChordChimp.xml");
+        chimp.replaceWithText ("<ChordChimp name=\"Old\" category=\"User\"><PARAM id=\"key\" value=\"5\"/><PARAM id=\"chordGroup\" value=\"5\"/></ChordChimp>");
+        const auto chimpTree = PresetManager::readFile (chimp);
+        if (chimpTree.isValid())
+            p->applyPreset (chimpTree, "User", "Old");
+        check (chimpTree.isValid() && (int) get (*p, params::key) == 5 && (int) get (*p, params::chordGroup) == 5 && p->getWorkspace() == filled,
+               "a ChordChimp preset file loads its settings (F, Sevenths) and leaves the workspace");
+        folder.deleteRecursively();
+
+        // Chord sets: load with suggestions, save, read back.
+        set (*p, params::key, 2.0f);
+        set (*p, params::scale, (float) (int) Scale::Dorian);
+        auto& sets = p->chordSets;
+        sets.rescan();
+        int twoFive = -1;
+        for (int i = 0; i < sets.getEntries().size(); ++i)
+            if (sets.getEntries()[i].name == "Two-Five-One" && sets.getEntries()[i].factory >= 0)
+                twoFive = i;
+        const bool loaded = sets.load (twoFive, 2, true);
+        const auto w = p->getWorkspace();
+        juce::StringArray names;
+        for (int i = 0; i < w.patterns[2].size(); ++i)
+            names.add (namePatternSlot (w.patterns[2].slots[(size_t) i], 2, Scale::Major).text());
+        check (sets.getEntries().size() >= numFactoryChordSets && loaded && names.joinIntoString (" ") == "Em7 A7 Dmaj7"
+                   && (int) get (*p, params::scale) == (int) Scale::Major && (int) get (*p, params::style) == 7,
+               "Two-Five-One into C in D: Em7 A7 Dmaj7, and its suggestions set Scale (Major) and Style (Charleston): " + names.joinIntoString (" "));
+        const auto before = p->getWorkspace();
+        check (! p->loadChordSet ("I V nonsense", 0) && ! sets.load (-1, 0, false) && p->getWorkspace() == before,
+               "a progression that doesn't read, or no such set, changes nothing");
+
+        const auto setFolder = ChordSetManager::userFolder().getChildFile (category);
+        auto cleared = p->getWorkspace();
+        cleared.patterns[3] = Pattern {};
+        p->setWorkspace (cleared);
+        const auto savedSet = sets.save ("My Two-Five", 2, category);
+        ChordSetManager::Entry e;
+        const bool read = ChordSetManager::readFile (setFolder.getChildFile ("My Two-Five.json"), e);
+        int listed = 0;
+        for (const auto& entry : sets.getEntries())
+            listed += entry.name == "My Two-Five" && entry.category == category ? 1 : 0;
+        check (savedSet.wasOk() && read && e.progression == "ii7 V7 Imaj7:8" && e.scale == "Major" && e.style == "Charleston" && listed == 1
+                   && ! sets.save ("Empty", 3, category).wasOk(),
+               "a pattern saves as a chord set (numerals in its key, the Scale and Style) and is listed; an empty pattern doesn't save");
+        setFolder.deleteRecursively();
+
+        // Pop Writer plays: Four Chords in Eighths with the bass.
+        auto q = std::make_unique<ChordMonkeyProcessor>();
+        q->prepareToPlay (48000.0, 512);
+        int popWriter = -1;
+        for (int i = 0; i < (int) factory.size(); ++i)
+            if (factory[(size_t) i].name == "Pop Writer")
+                popWriter = i;
+        q->setCurrentProgram (popWriter);
+        set (*q, params::play, 1.0f);
+        LoopPlayHead head;
+        head.looping = false;
+        head.bpm = 120.0;
+        q->setPlayHead (&head);
+        juce::AudioBuffer<float> buffer (2, 512);
+        juce::MidiBuffer midi;
+        std::vector<int> first;
+        q->processBlock (buffer, midi);
+        for (const auto m : midi)
+            if (m.getMessage().isNoteOn())
+                first.push_back (m.getMessage().getNoteNumber());
+        std::sort (first.begin(), first.end());
+        q->setPlayHead (nullptr);
+        check (first == std::vector<int> { 36, 48, 52, 55 }, "Pop Writer with Play: its first strike is C with the bass C1 (Four Chords, Bass Root)");
     }
 }
 
@@ -1595,6 +1738,7 @@ int main (int argc, char** argv)
     testPhase8();
     testAnalyse (fixtures, out, update);
     testWorkspace();
+    testChordSetsAndPresets();
 
     std::cout << (failures == 0 ? "\nsnapshot: all passed\n" : "\n*** snapshot: " + std::to_string (failures) + " failure(s)\n");
     return failures == 0 ? 0 : 1;

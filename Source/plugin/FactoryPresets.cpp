@@ -15,6 +15,16 @@ namespace chordmonkey
         float f (ArpPattern p) { return (float) (int) p; }
         float f (VelocityCurve c) { return (float) (int) c; }
         float f (HoldMode m) { return (float) (int) m; }
+        float f (VoicingMode m) { return (float) (int) m; }
+        float f (BassMode m) { return (float) (int) m; }
+        float style (const char* name)
+        {
+            for (int i = 0; i < numStyles; ++i)
+                if (juce::String (styleInfo (i).name) == name)
+                    return (float) i;
+            jassertfalse;
+            return 0.0f;
+        }
         // Strum and pattern rate indices (NoteValues.h).
         constexpr float strum1_64 = 2.0f, strum1_32 = 4.0f, strum1_16T = 5.0f;
         constexpr float rate1_8 = 3.0f, rate1_8T = 4.0f, rate1_16 = 5.0f, rate1_16T = 6.0f;
@@ -95,6 +105,43 @@ namespace chordmonkey
             p.push_back ({ "Vibe", "Bright Melody", V {
                 { key, 0 }, { scale, f (Scale::Major) }, { chordGroup, f (ChordGroup::Triads) }, { progression, f (Progression::Diatonic) },
                 { params::arp, f (ArpPattern::LinearUp) }, { arpRate, rate1_8 }, { arpRange, 2 } } });
+
+            // Songwriting (Phase 5): chord sets in patterns A-D, with a style. Press Play.
+            const auto song = [&p] (const char* name, V values, std::array<const char*, 4> sets)
+            {
+                p.push_back ({ "Songwriting", name, std::move (values), sets });
+            };
+            song ("Pop Writer", { { key, 0 }, { scale, f (Scale::Major) }, { params::style, style ("Eighths") }, { params::bass, f (BassMode::Root) },
+                                  { velocity, f (VelocityCurve::House) }, { velocityRange, 25 } },
+                  { "Four Chords", "Sensitive Pop", "Fifties", "Pop Lift" });
+            song ("Neo-Soul Session", { { key, 3 }, { scale, f (Scale::Major) }, { params::style, style ("Dotted quarters") },
+                                        { params::voicing, f (VoicingMode::Open) }, { strum, f (StrumMode::Up) }, { strumRate, strum1_64 },
+                                        { params::humanize, 40 } },
+                  { "Neo-Soul Loop", "Two-Five-One", "Backdoor", "Gospel Walk" });
+            song ("House Session", { { key, 9 }, { scale, f (Scale::Dorian) }, { params::style, style ("House stabs") },
+                                     { params::voicing, f (VoicingMode::Open) }, { velocity, f (VelocityCurve::House) }, { velocityRange, 40 } },
+                  { "Deep House Minor", "Garage Sevenths", "Two-Chord Groove", "Euro Minor" });
+            song ("Cinematic Session", { { key, 2 }, { scale, f (Scale::NaturalMinor) }, { params::style, style ("Half notes") },
+                                         { params::voicing, f (VoicingMode::Spread) }, { params::bass, f (BassMode::RootFifth) },
+                                         { velocity, f (VelocityCurve::UpDown) }, { velocityRange, 30 } },
+                  { "Epic Minor", "Heroic Rise", "Phrygian Mystery", "Trailer Pulse" });
+            song ("Rock Session", { { key, 4 }, { scale, f (Scale::Mixolydian) }, { params::style, style ("Eighths") }, { params::bass, f (BassMode::Root) },
+                                    { stack, f (StackMode::PlusOne) } },
+                  { "Mixolydian Rock", "Classic Rock", "Power Descent", "Twelve-Bar Shuffle" });
+            song ("Jazz Session", { { key, 10 }, { scale, f (Scale::Major) }, { params::style, style ("Charleston") },
+                                    { params::voicing, f (VoicingMode::Wide) }, { params::swing, 50 }, { params::humanize, 30 } },
+                  { "Two-Five-One", "Minor Two-Five", "Turnaround", "Backdoor" });
+            song ("Ballad Session", { { key, 7 }, { scale, f (Scale::Major) }, { params::style, style ("Ballad") }, { params::bass, f (BassMode::Root) },
+                                      { params::voicing, f (VoicingMode::Spread) }, { params::humanize, 50 } },
+                  { "Hopeful", "Sad", "Nostalgic", "Happy" });
+            song ("Lo-Fi Session", { { key, 5 }, { scale, f (Scale::Lydian) }, { params::style, style ("Broken up") }, { params::swing, 40 },
+                                     { params::humanize, 60 }, { velocity, f (VelocityCurve::Breakbeat) }, { velocityRange, 30 } },
+                  { "Dreamy", "Neo-Soul Loop", "Garage Sevenths", "Lydian Wonder" });
+            song ("Reggae Session", { { key, 7 }, { scale, f (Scale::Major) }, { params::style, style ("Reggae skank") }, { params::bass, f (BassMode::Root) } },
+                  { "Classic Rock", "Plagal Pop", "Four Chords", "Happy" });
+            song ("Latin Session", { { key, 9 }, { scale, f (Scale::HarmonicMinor) }, { params::style, style ("Tresillo") },
+                                     { params::voicing, f (VoicingMode::Open) }, { params::humanize, 30 } },
+                  { "Andalusian Descent", "Dembow Minor", "Minor Riff", "Suspense" });
             return p;
         }
     }

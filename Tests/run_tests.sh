@@ -44,6 +44,7 @@ compile_and_run test_workspace
 compile_and_run test_player
 compile_and_run test_bind
 compile_and_run test_style
+compile_and_run test_chordsets
 
 echo ""
 echo "All test binaries passed."

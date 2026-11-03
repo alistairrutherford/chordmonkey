@@ -56,7 +56,7 @@ namespace chordmonkey::params
 
     // Pattern playback (appended; PLAN.md §3.2, Phase 2): Play (the current pattern plays in
     // time while the host plays) and Pattern (A-D; a switch while playing waits for the bar).
-    // Not in presets yet: presets don't hold the workspace until Phase 5.
+    // Pattern is in presets since Phase 5 (they hold the workspace); Play isn't.
     inline constexpr const char* play          = "play";
     inline constexpr const char* pattern       = "pattern";
 
@@ -89,8 +89,8 @@ namespace chordmonkey::params
     // (Chordism's Custom: Diatonic). The other kept values mean the same.
     void fromChordism (juce::ValueTree& tree);
 
-    // Parameters a preset doesn't touch: Enable, Key octave, Analyse, Play, Pattern, Bind, Bind
-    // start, Keys-Lock and the test rig (Test pattern, Test workspace) (PresetManager).
+    // Parameters a preset doesn't touch: Enable, Key octave, Analyse, Play, Bind, Bind start,
+    // Keys-Lock and the test rig (Test pattern, Test workspace) (PresetManager).
     bool isPresetParameter (const juce::String& paramId);
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();

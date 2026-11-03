@@ -13,6 +13,7 @@
 # Installs, for this user only:
 #   ~/Library/Audio/Plug-Ins/VST3/ChordMonkey.vst3
 #   ~/Applications/ChordMonkey.app            (the Standalone)
+#   ~/Music/ChordMonkey/ChordSets/User/       (an empty folder for user chord sets; Phase 5)
 #   ~/Music/ChordMonkey/Presets/User/         (an empty folder for user presets; the factory
 #                                           presets are built into the plug-in)
 #
@@ -30,6 +31,7 @@ BUILD_DIR="$REPO/dist/build"
 VST3_DIR="$HOME/Library/Audio/Plug-Ins/VST3"
 APP_DIR="$HOME/Applications"
 PRESET_DIR="$HOME/Music/ChordMonkey/Presets/User"
+CHORDSET_DIR="$HOME/Music/ChordMonkey/ChordSets/User"
 EXPECTED_JUCE="8.0.14"
 
 build=1 validate=0 standalone=1 uninstall=0
@@ -54,7 +56,7 @@ if [[ $uninstall == 1 ]]; then
     for b in "$VST3_DIR/ChordMonkey.vst3" "$APP_DIR/ChordMonkey.app"; do
         if [[ -e "$b" ]]; then rm -rf "$b"; say "removed $b"; fi
     done
-    say "user presets left in ${PRESET_DIR%/User}"
+    say "user presets left in ${PRESET_DIR%/User}, user chord sets in ${CHORDSET_DIR%/User}"
     exit 0
 fi
 
@@ -128,7 +130,7 @@ if [[ $standalone == 1 ]]; then
     sign "$PRODUCTS/ChordMonkey.app"
     install_bundle "$PRODUCTS/ChordMonkey.app" "$APP_DIR"
 fi
-mkdir -p "$PRESET_DIR"
+mkdir -p "$PRESET_DIR" "$CHORDSET_DIR"
 
 if [[ $validate == 1 ]]; then
     "$REPO/Tests/run_validation.sh"

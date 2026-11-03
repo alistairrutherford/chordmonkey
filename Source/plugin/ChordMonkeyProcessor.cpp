@@ -484,6 +484,8 @@ namespace chordmonkey
             if (std::abs (param->getValue() - value) > 1.0e-6f)
                 param->setValueNotifyingHost (value);
         }
+        if (const auto ws = tree.getChildWithName ("WORKSPACE"); ws.isValid())
+            setWorkspace (workspaceFromTree (ws));
         engine.requestReset();            // all notes off on a preset change (Chordism §5)
         setPresetIdentity (category, name);
     }
@@ -494,6 +496,7 @@ namespace chordmonkey
         for (const auto& child : state.copyState())
             if (child.hasType ("PARAM") && params::isPresetParameter (child.getProperty ("id").toString()))
                 tree.appendChild (child.createCopy(), nullptr);
+        tree.appendChild (workspaceToTree (getWorkspace()), nullptr);
         tree.setProperty ("version", JucePlugin_VersionString, nullptr);
         return tree;
     }
@@ -575,6 +578,20 @@ namespace chordmonkey
             workspaceForAudio.publish (workspace);
         }
         notifyStateChanged();
+    }
+
+    bool ChordMonkeyProcessor::loadChordSet (const juce::String& progression, int pattern)
+    {
+        if (pattern < 0 || pattern >= numPatterns)
+            return false;
+        Pattern p;
+        std::string error;
+        if (! parseProgression (progression.toStdString(), snapshot.key(), p, error))
+            return false;
+        auto w = getWorkspace();
+        w.patterns[(size_t) pattern] = p;
+        setWorkspace (w);
+        return true;
     }
 
     juce::ValueTree ChordMonkeyProcessor::workspaceToTree (const Workspace& w)

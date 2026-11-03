@@ -64,7 +64,7 @@ namespace chordmonkey::params
 
     bool isPresetParameter (const juce::String& paramId)
     {
-        for (const char* excluded : { enable, testPattern, keyOctave, analyse, play, pattern, testWorkspace, bindSource, bindStart, keysLock })
+        for (const char* excluded : { enable, testPattern, keyOctave, analyse, play, testWorkspace, bindSource, bindStart, keysLock })
             if (paramId == excluded)
                 return false;
         return true;

@@ -46,6 +46,7 @@
       <GROUP id="cmGrp1" name="core/model">
         <FILE id="cmF002" name="Workspace.h" compile="0" resource="0" file="Source/core/model/Workspace.h"/>
         <FILE id="cmF003" name="ChordSets.h" compile="0" resource="0" file="Source/core/model/ChordSets.h"/>
+        <FILE id="cmF004" name="ChordSetLibrary.h" compile="0" resource="0" file="Source/core/model/ChordSetLibrary.h"/>
       </GROUP>
       <GROUP id="csGrp4" name="core/midiio">
         <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>
@@ -58,6 +59,8 @@
         <FILE id="csF014" name="Parameters.cpp" compile="1" resource="0" file="Source/plugin/Parameters.cpp"/>
         <FILE id="csF055" name="PresetManager.h" compile="0" resource="0" file="Source/plugin/PresetManager.h"/>
         <FILE id="csF056" name="PresetManager.cpp" compile="1" resource="0" file="Source/plugin/PresetManager.cpp"/>
+        <FILE id="cmF005" name="ChordSetManager.h" compile="0" resource="0" file="Source/plugin/ChordSetManager.h"/>
+        <FILE id="cmF006" name="ChordSetManager.cpp" compile="1" resource="0" file="Source/plugin/ChordSetManager.cpp"/>
         <FILE id="csF057" name="FactoryPresets.h" compile="0" resource="0" file="Source/plugin/FactoryPresets.h"/>
         <FILE id="csF058" name="FactoryPresets.cpp" compile="1" resource="0" file="Source/plugin/FactoryPresets.cpp"/>
       </GROUP>

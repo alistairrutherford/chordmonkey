@@ -24,6 +24,7 @@
 #include "../core/model/Workspace.h"
 #include "Parameters.h"
 #include "PresetManager.h"
+#include "ChordSetManager.h"
 #include <atomic>
 
 namespace chordmonkey
@@ -107,10 +108,21 @@ namespace chordmonkey
         Workspace getWorkspace() const;
         void setWorkspace (const Workspace&);
 
+        // Writes a chord set (a progression, ChordSets.h) into pattern `pattern` in the current
+        // Key (Phase 5). False, and the workspace unchanged, if it doesn't read.
+        bool loadChordSet (const juce::String& progression, int pattern);
+
+        // The workspace as the state and presets save it, and back (patterns missing or
+        // unreadable come back empty).
+        static juce::ValueTree workspaceToTree (const Workspace&);
+        static Workspace workspaceFromTree (const juce::ValueTree&);
+
         //==========================================================================
         // Presets (message thread). applyPreset sets every preset parameter (the preset's value,
-        // or the default if it has none), and ends every note.
+        // or the default if it has none), replaces the workspace if the preset has one (Phase 5),
+        // and ends every note. presetState holds the workspace too.
         PresetManager presets { *this };
+        ChordSetManager chordSets { *this };   // Phase 5
         void applyPreset (const juce::ValueTree& preset, const juce::String& category, const juce::String& name);
         juce::ValueTree presetState();
         const juce::String& getPresetName() const noexcept { return presetName; }
@@ -213,8 +225,6 @@ namespace chordmonkey
         mutable juce::CriticalSection workspaceLock;
         Workspace workspace;
         SnapshotExchange<Workspace> workspaceForAudio;   // written under workspaceLock
-        static juce::ValueTree workspaceToTree (const Workspace&);
-        static Workspace workspaceFromTree (const juce::ValueTree&);
         std::atomic<int> currentProgram { 0 }, pendingProgram { -1 };
         void loadProgram (int index);
 

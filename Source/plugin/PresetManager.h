@@ -30,7 +30,7 @@ namespace chordmonkey
 
         explicit PresetManager (ChordMonkeyProcessor& p) : processor (p) {}
 
-        static juce::StringArray categories() { return { "Genre", "Artist-style", "Vibe", "User" }; }
+        static juce::StringArray categories() { return { "Genre", "Artist-style", "Vibe", "Songwriting", "User" }; }
         static juce::File userFolder();
         static juce::String fileExtension() { return ".xml"; }
 
@@ -50,7 +50,8 @@ namespace chordmonkey
         // A preset file's tree, or an invalid tree.
         static juce::ValueTree readFile (const juce::File& file);
 
-        // The tree of factory preset `index`: its values over the defaults.
+        // The tree of factory preset `index`: its values over the defaults, and its chord sets as a
+        // WORKSPACE (ChordMonkeyProcessor::workspaceToTree) in the preset's Key, if it has any.
         static juce::ValueTree factoryTree (int index);
 
     private:

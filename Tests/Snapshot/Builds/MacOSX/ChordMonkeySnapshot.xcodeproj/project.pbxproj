@@ -44,6 +44,7 @@
 		AC57147D28285288FBD66E24 /* MetalKit.framework */ = {isa = PBXBuildFile; fileRef = A65D650CA0FF8E2FF1AC776A; settings = { ATTRIBUTES = (Weak, ); }; };
 		AE5227B8888F1E4C19E5F06C /* Parameters.cpp */ = {isa = PBXBuildFile; fileRef = FD7CAFE3DAB0F6917E9F4069; };
 		C35FDFB79D072DBA90747CDE /* Security.framework */ = {isa = PBXBuildFile; fileRef = F842FE9D3028FF8E3311B45F; };
+		D7B2712BAADA1071F45B8E1F /* ChordSetManager.cpp */ = {isa = PBXBuildFile; fileRef = 959187B01D2E9DAC22E3CBF6; };
 		D8F95615BCF9A5B257FD9014 /* IOKit.framework */ = {isa = PBXBuildFile; fileRef = 917BEDC1DD2C78D5E729FAD3; };
 		DA301B6ACEAF95D53644F470 /* include_juce_audio_processors_headless_lv2_libs.cpp */ = {isa = PBXBuildFile; fileRef = 9512FEC15B53B600284F485D; };
 		E1388DFE11A2517F167086DE /* ParamControl.cpp */ = {isa = PBXBuildFile; fileRef = 46BA9C2B5DE31F2FF16390F7; };
@@ -93,6 +94,7 @@
 		8C242E1BFFA24FB18480058C /* juce_audio_processors_headless */ /* juce_audio_processors_headless */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_processors_headless; path = /Users/alistairrutherford/Development/JUCE/modules/juce_audio_processors_headless; sourceTree = "<absolute>"; };
 		917BEDC1DD2C78D5E729FAD3 /* IOKit.framework */ /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
 		9512FEC15B53B600284F485D /* include_juce_audio_processors_headless_lv2_libs.cpp */ /* include_juce_audio_processors_headless_lv2_libs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_audio_processors_headless_lv2_libs.cpp; path = ../../JuceLibraryCode/include_juce_audio_processors_headless_lv2_libs.cpp; sourceTree = SOURCE_ROOT; };
+		959187B01D2E9DAC22E3CBF6 /* ChordSetManager.cpp */ /* ChordSetManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChordSetManager.cpp; path = ../../../../Source/plugin/ChordSetManager.cpp; sourceTree = SOURCE_ROOT; };
 		9668ED892A62F6F3EEFE52C0 /* QuartzCore.framework */ /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		9BF8AA8AA0B79017B4B5C8C8 /* include_juce_gui_basics_4.cpp */ /* include_juce_gui_basics_4.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = include_juce_gui_basics_4.cpp; path = ../../JuceLibraryCode/include_juce_gui_basics_4.cpp; sourceTree = SOURCE_ROOT; };
 		A65D650CA0FF8E2FF1AC776A /* MetalKit.framework */ /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
@@ -264,6 +266,7 @@
 				ACB42917D7EBFFF5DCAD037C,
 				5C18FD9BFF6ED86B3C6D47A3,
 				B853EB35D67789FF28801161,
+				959187B01D2E9DAC22E3CBF6,
 				570567F9288D9CCE09E2464A,
 				67D802A3AE1FE20B1250C368,
 			);
@@ -344,6 +347,7 @@
 				8E3F26339FA924D16E00BF42,
 				7BFC1A2DF332E354AD163285,
 				01C32FE5CEFBB2C8606306B2,
+				D7B2712BAADA1071F45B8E1F,
 				01B4A0CBBCFCE5DBFB91F492,
 				15FBC998CCC5481BE14DBA6A,
 				52645CA2E19A7389E52E92C7,
