@@ -11,10 +11,10 @@ namespace chordmonkey
     ChordMonkeyEditor::ChordMonkeyEditor (ChordMonkeyProcessor& p)
         : AudioProcessorEditor (p), processor (p), bindings (p.state),
           topBar (p, bindings, [this] (bool shown) { showKeyboard (shown); }),
-          globals (p, bindings), chordPads (p), effects (bindings), outputKeys (p)
+          globals (p, bindings), keyboardRow (bindings), chordPads (p), effects (bindings), outputKeys (p)
     {
         setLookAndFeel (&lookAndFeel);
-        for (auto* c : std::initializer_list<juce::Component*> { &topBar, &globals, &chordPads, &effects, &outputKeys })
+        for (auto* c : std::initializer_list<juce::Component*> { &topBar, &globals, &keyboardRow, &chordPads, &effects, &outputKeys })
             addAndMakeVisible (c);
 
         // Read the saved preferences before anything resizes the editor: setResizeLimits and the
@@ -63,7 +63,9 @@ namespace chordmonkey
 
         r.reduce (12, 10);
         globals.setBounds (r.removeFromTop (42));
-        r.removeFromTop (12);
+        r.removeFromTop (4);
+        keyboardRow.setBounds (r.removeFromTop (42));
+        r.removeFromTop (8);
         effects.setBounds (r.removeFromBottom (ui::EffectsPanel::preferredHeight()));
         r.removeFromBottom (12);
         // The pads take the space left, up to a height that still looks like pads; any more is
@@ -88,6 +90,7 @@ namespace chordmonkey
         m.guess = processor.readKeyGuess();
 
         globals.refresh (m);
+        keyboardRow.refresh (m);
         chordPads.refresh (m);
         outputKeys.refresh (m);
         effects.refresh (m);

@@ -3,7 +3,9 @@
 //   TopBar         the name · On · the preset browser · Pattern (A-D) · Play · Export (drag out
 //                  the last bars played) · Keys (show or hide the output keyboard). Pattern and
 //                  Play sit here until the workspace gets its own panel (PLAN.md Phase 6)
-//   GlobalRow      Key · Heard · Scale · Chord Group · Progression · Octave · Key octave
+//   GlobalRow      Key · Heard · Scale · Chord Group · Progression · Octave
+//   KeyboardRow    Bind · From (the Bind zone's first key) · Keys-Lock · Key octave (Phase 3,
+//                  PLAN.md §3.3); what doesn't apply to the Bind chosen is dimmed
 //   HeardKey       the Heard box (ChordChimp's docs/KEY_DETECTION_PLAN.md K5): Analyse, then the key heard;
 //                  a click on the guess sets Key (and Scale) to it, ✕ stops analysing
 //   EffectsPanel   six cards: Strum, Velocity; Arp, Voicing (Stack, Hold, Voice leading);
@@ -88,7 +90,19 @@ namespace chordmonkey::ui
 
     private:
         Bindings& bindings;
-        ParamControl key, scale, group, progression, octave, keyOctave;
+        ParamControl key, scale, group, progression, octave;
+    };
+
+    class KeyboardRow : public juce::Component
+    {
+    public:
+        explicit KeyboardRow (Bindings&);
+        void refresh (const UiModel&);
+        void resized() override;
+
+    private:
+        Bindings& bindings;
+        ParamControl bind, from, keysLock, keyOctave;
     };
 
     class EffectsPanel : public juce::Component

@@ -13,6 +13,14 @@ namespace chordmonkey
         uint8_t data[3] {};
         uint8_t size = 0;
 
+        // Where a key event comes from (Phase 3): the host's MIDI or an on-screen key, routed by
+        // Bind and Keys-Lock; or the editor's chord pads and the test pattern, which always play
+        // the palette chord of their key (KeyRouter::slotOf).
+        enum Origin : uint8_t { fromKeys = 0, fromPalette = 1 };
+        uint8_t origin = fromKeys;
+
+        MidiEvent withOrigin (uint8_t o) const noexcept { MidiEvent e = *this; e.origin = o; return e; }
+
         static MidiEvent noteOn (int channel, int note, int velocity, int sample) noexcept
         {
             return { sample, { (uint8_t) (0x90 | (channel & 15)), (uint8_t) (note & 127), (uint8_t) (velocity & 127) }, 3 };

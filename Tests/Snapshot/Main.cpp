@@ -33,7 +33,8 @@
 //                 the parameters, restores empty from an older state, survives a damaged
 //                 pattern, and an edit tells the host; the test rig's Workspace.txt loads while
 //                 Test workspace is on; a workspace set on the message thread plays (Play,
-//                 Pattern) in processBlock with no allocation (Phase 2)
+//                 Pattern) in processBlock with no allocation (Phase 2); Bind keys choose the
+//                 pattern (the parameter follows) and the pads ignore Bind (Phase 3)
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -1272,6 +1273,57 @@ namespace
             check (ons == std::vector<int> { 48, 52, 55, 55, 59, 62, 48, 52, 55 } && q->playingPattern.load() == 1 && q->playingSlot.load() == 0,
                    "Play with Pattern B plays its C and G, two beats each, and C again (" + juce::String ((int) ons.size()) + " note-ons)");
             check (allocCount.load() == before, "no allocation in processBlock while the pattern plays");
+        }
+
+        std::cout << "== Bind (Phase 3) ==\n";
+        {
+            auto q = std::make_unique<ChordMonkeyProcessor>();
+            q->prepareToPlay (48000.0, 512);
+            Workspace w;
+            std::string error;
+            parseProgression ("I V", 0, w.patterns[0], error);
+            parseProgression ("vi", 0, w.patterns[1], error);
+            q->setWorkspace (w);
+            set (*q, params::bindSource, (float) BindSource::Workspace);
+            juce::AudioBuffer<float> buffer (2, 512);
+            auto play = [&] (juce::MidiBuffer midi)
+            {
+                q->processBlock (buffer, midi);
+                std::vector<int> ons;
+                for (const auto m : midi)
+                    if (m.getMessage().isNoteOn())
+                        ons.push_back (m.getMessage().getNoteNumber());
+                std::sort (ons.begin(), ons.end());
+                return ons;
+            };
+            juce::MidiBuffer dSharp;
+            dSharp.addEvent (juce::MidiMessage::noteOn (1, 39, (juce::uint8) 100), 0);
+            play (dSharp);
+            runTimers (150);
+            juce::MidiBuffer c1;
+            c1.addEvent (juce::MidiMessage::noteOn (1, 36, (juce::uint8) 100), 0);
+            const auto vi = play (c1);
+            check ((int) get (*q, params::pattern) == 1 && vi == std::vector<int> { 57, 60, 64 },
+                   "Bind Workspace: D#1 chooses pattern B and the Pattern parameter follows; C1 then plays its vi");
+
+            set (*q, params::bindSource, (float) BindSource::Off);
+            juce::MidiBuffer allOff;
+            allOff.addEvent (juce::MidiMessage::allNotesOff (1), 0);
+            play (allOff);
+            q->pushUiNote (50, 100, true, true);
+            const auto pad = play ({});
+            q->pushUiNote (50, 0, false, true);
+            juce::MidiBuffer d1;
+            d1.addEvent (juce::MidiMessage::noteOn (1, 38, (juce::uint8) 100), 0);
+            const auto key = play (d1);
+            check (pad == std::vector<int> { 50, 53, 57 } && key == std::vector<int> { 38 },
+                   "Bind Off: a chord pad still plays its chord (ii); a key plays its note (Keys-Lock Off)");
+            check (! params::isPresetParameter (params::bindSource) && ! params::isPresetParameter (params::bindStart)
+                       && ! params::isPresetParameter (params::keysLock),
+                   "Bind, Bind start and Keys-Lock aren't preset parameters");
+            const auto* start = dynamic_cast<juce::AudioParameterInt*> (q->state.getParameter (params::bindStart));
+            check (start != nullptr && start->getCurrentValueAsText() == "C1" && start->getRange().getEnd() == 115,
+                   "Bind start shows note names (C1) and reaches 115");
         }
     }
 }

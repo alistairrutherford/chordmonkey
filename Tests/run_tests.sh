@@ -42,6 +42,7 @@ compile_and_run test_export
 compile_and_run test_keys
 compile_and_run test_workspace
 compile_and_run test_player
+compile_and_run test_bind
 
 echo ""
 echo "All test binaries passed."

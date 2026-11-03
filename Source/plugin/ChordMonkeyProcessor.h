@@ -87,8 +87,9 @@ namespace chordmonkey
         EngineSettings currentSettings() const noexcept { return snapshot.engineSettings(); }
 
         // On-screen keys (Phase 5): the editor's keyboards play through the engine like host
-        // MIDI input. Message thread only; lock-free, read by the next audio block.
-        void pushUiNote (int note, int velocity, bool on) noexcept;
+        // MIDI input. Message thread only; lock-free, read by the next audio block. `palette`:
+        // the chord pads, which play their key's palette chord whatever Bind is (Phase 3).
+        void pushUiNote (int note, int velocity, bool on, bool palette = false) noexcept;
 
         // Key and note states for the editor (written by the audio thread each block): an
         // output note sounds; an input key is down; a key's performance plays (held or latched).

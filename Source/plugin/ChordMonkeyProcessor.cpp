@@ -227,12 +227,13 @@ namespace chordmonkey
         }
     }
 
-    void ChordMonkeyProcessor::pushUiNote (int note, int velocity, bool on) noexcept
+    void ChordMonkeyProcessor::pushUiNote (int note, int velocity, bool on, bool palette) noexcept
     {
         if (note < 0 || note > 127)
             return;
         const auto scope = uiFifo.write (1);
-        const MidiEvent e = on ? MidiEvent::noteOn (0, note, juce::jlimit (1, 127, velocity), 0) : MidiEvent::noteOff (0, note, 0);
+        const MidiEvent e = (on ? MidiEvent::noteOn (0, note, juce::jlimit (1, 127, velocity), 0) : MidiEvent::noteOff (0, note, 0))
+                                .withOrigin (palette ? MidiEvent::fromPalette : MidiEvent::fromKeys);
         if (scope.blockSize1 > 0) uiNotes[(size_t) scope.startIndex1] = e;
         else if (scope.blockSize2 > 0) uiNotes[(size_t) scope.startIndex2] = e;
     }
@@ -247,6 +248,17 @@ namespace chordmonkey
         // The host (or the bridge) asked for the guess.
         if (snapshot.analyseMode() == params::AnalyseMode::UseGuess)
             applyGuess();
+
+        // A Bind pattern key chose a pattern: the Pattern parameter follows, for the host and
+        // the editor (the engine already plays it).
+        if (const int k = engine.takePatternRequest(); k >= 0)
+            if (auto* p = state.getParameter (params::pattern))
+                if (const float v = p->convertTo0to1 ((float) k); std::abs (p->getValue() - v) > 1.0e-6f)
+                {
+                    p->beginChangeGesture();
+                    p->setValueNotifyingHost (v);
+                    p->endChangeGesture();
+                }
 
         // The test rig's workspace, from the bridge.
         if (snapshot.testWorkspace())

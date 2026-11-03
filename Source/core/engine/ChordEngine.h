@@ -15,6 +15,11 @@
 //                   (ChordChimp's docs/KEY_DETECTION_PLAN.md); no chords, no test pattern
 //   Play          → the workspace's current pattern plays in time (PatternPlayer.h, PLAN.md
 //                   §3.2, Phase 2), through the same effects, as performance 128
+//   Bind          → All keys (the above), or a Bind zone of slot and pattern keys with
+//                   Keys-Lock above it (KeyRouter.h, KeysLock.h, PLAN.md §3.3, Phase 3). A slot
+//                   key plays its chord while held, or, while the pattern plays, jumps to its
+//                   slot at the next beat; a pattern key chooses the pattern (and asks the
+//                   plug-in to set the Pattern parameter: takePatternRequest)
 //
 // The workspace reaches the engine by setWorkspace (a copy, on the audio thread). The playing
 // pattern's slot notes follow it and Chord Octave; a sounding slot whose notes change is
@@ -33,6 +38,7 @@
 #include "ChordFx.h"
 #include "Clock.h"
 #include "KeyListener.h"
+#include "KeysLock.h"
 #include "KeyRouter.h"
 #include "MidiEvents.h"
 #include "PatternPlayer.h"
@@ -59,6 +65,9 @@ namespace chordmonkey
         bool analysing = false;           // Analyse is Listen or Use guess (key detection)
         bool play = false;                // Play: the current pattern plays (Phase 2)
         int pattern = 0;                  // Pattern: A-D
+        BindSource bind = BindSource::AllKeys;   // Phase 3
+        int bindStart = 36;               // the Bind zone's first key (C1)
+        KeysLockMode keysLock = KeysLockMode::Off;
         int outputChannel = 0;            // 0..15
         ChordFxSettings fx;
     };
@@ -119,7 +128,8 @@ namespace chordmonkey
                 injected.clear();
                 pattern.generate (s.enabled && s.testPattern && ! s.analysing, segmentTransport, g.end - g.start, injected, g.start);
                 triggers.clear();
-                player.generate (s.enabled && s.play && ! s.analysing, workspace, s.pattern, clock, seg, g.end - g.start, triggers, g.start);
+                playOn = s.enabled && s.play && ! s.analysing;
+                player.generate (playOn, workspace, currentPattern, clock, seg, g.end - g.start, triggers, g.start);
 
                 int j = 0, k = 0, cursor = g.start, runs = 0;
                 while (true)
@@ -159,6 +169,13 @@ namespace chordmonkey
                     {
                         (fromInput ? i : j)++;
                         handle (*next, numSamples, out);
+                        if (regenerate)
+                        {
+                            // A Bind key asked for a jump: the rest of this segment's triggers again.
+                            regenerate = false;
+                            triggers.truncate (k);
+                            player.generate (playOn, workspace, currentPattern, clock, seg, g.end - g.start, triggers, g.start, keySample);
+                        }
                     }
                 }
             }
@@ -175,6 +192,7 @@ namespace chordmonkey
             voices.releaseAll (sample, out);
             held = {};
             player.reset();
+            regenerate = false;
             listener.allUp (timeAt (sample));
             refreshChords (sample, nullptr);
         }
@@ -195,6 +213,13 @@ namespace chordmonkey
         // The pattern slot sounding (0..7) and its pattern, or -1 (for the editor).
         int getPlayingSlot() const noexcept { return performer.isAlive (ChordPerformer::patternKey) ? player.currentSlot() : -1; }
         int getPlayingPattern() const noexcept { return player.playingPattern(); }
+
+        // The pattern a Bind key chose (0..3), once, or -1: the plug-in sets the Pattern
+        // parameter to it so the host and the editor follow. Any thread.
+        int takePatternRequest() noexcept { return patternRequest.exchange (-1); }
+
+        // The pitch classes of the chord playing, for Keys-Lock's Chord notes (bit pc).
+        unsigned getChordMask() const noexcept { return chordMaskOrDefault(); }
         const Clock& getClock() const noexcept { return clock; }
 
         // The key heard in Analyse mode (the last analysis's, until the next one starts).
@@ -211,8 +236,8 @@ namespace chordmonkey
             bool down = false;
             uint8_t velocity = 0;
             uint8_t channel = 0;
-            int8_t slot = -1;             // the chord slot (0..11)
-            bool passThrough = false;     // pressed while Enable was off
+            int8_t slot = -1;             // the chord slot it plays (0..19), or -1
+            bool passThrough = false;     // owns a plain note: Enable off, below the Bind zone, Keys-Lock
         };
 
         // Recomputes the chords. With `out`, every performance whose chord changed is replayed at
@@ -273,15 +298,27 @@ namespace chordmonkey
                 return;
             }
             if (t.pattern != chordsPattern)
-                refreshPatternChords (t.pattern, nullptr);
+            {
+                // The pattern's own chord ends here anyway; a Bind key's chord held from the old
+                // pattern takes the new one's notes.
+                performer.end (ChordPerformer::patternKey, t.sample, out);
+                SlotFlags changed {};
+                refreshPatternChords (t.pattern, &changed);
+                performer.retune (changed, t.sample, out);
+            }
             performer.press (ChordPerformer::patternKey, numChordSlots + t.slot, patternVelocity, t.sample, out);
+            noteChord (ChordPerformer::patternKey);
         }
 
         void applySettings (const EngineSettings& s, BlockEvents& out) noexcept
         {
             const EngineSettings old = current;
             current = s;
-            performer.setFollowKeyOctave (s.followKeyOctave);
+            // Key octave moves chords only when every key plays them.
+            performer.setFollowKeyOctave (s.followKeyOctave && s.bind == BindSource::AllKeys);
+            if (s.pattern != old.pattern || ! settingsSeen)
+                currentPattern = s.pattern < 0 ? 0 : (s.pattern >= numPatterns ? numPatterns - 1 : s.pattern);
+            settingsSeen = true;
 
             if (s.enabled != old.enabled || s.analysing != old.analysing)
             {
@@ -329,7 +366,7 @@ namespace chordmonkey
                 h.velocity = (uint8_t) e.velocity();
                 h.channel = (uint8_t) e.channel();
                 h.passThrough = ! current.enabled || current.analysing;
-                h.slot = (int8_t) KeyRouter::slotOf (n);
+                h.slot = -1;
 
                 if (h.passThrough)
                 {
@@ -337,11 +374,10 @@ namespace chordmonkey
                     if (current.analysing)
                         listener.noteOn (n, h.velocity, timeAt (sample));
                 }
-                else if (h.slot >= 0)
-                {
-                    lastChordSlot = h.slot;
-                    performer.press (n, h.slot, h.velocity, sample, out);
-                }
+                else if (e.origin == MidiEvent::fromPalette || current.bind == BindSource::AllKeys)
+                    pressChord (n, KeyRouter::slotOf (n), 0, sample, out);
+                else
+                    routeKey (n, sample, out);
             }
             else if (e.isNoteOff())
             {
@@ -357,6 +393,94 @@ namespace chordmonkey
             else
             {
                 out.push ({ sample, { e.data[0], e.data[1], e.data[2] }, e.size });
+            }
+        }
+
+        // Key `n` plays chord slot `slot` (0..19), `octave` octaves up (Bind Palette's top C).
+        void pressChord (int n, int slot, int octave, int sample, BlockEvents& out) noexcept
+        {
+            auto& h = held[(size_t) n];
+            h.slot = (int8_t) slot;
+            if (slot < numChordSlots)
+                lastChordSlot = slot;
+            performer.press (n, slot, h.velocity, sample, out, octave);
+            noteChord (n);
+        }
+
+        // The chord performance `key` plays is the one Keys-Lock's Chord notes follow.
+        void noteChord (int key) noexcept
+        {
+            unsigned m = 0;
+            for (const uint8_t note : performer.notesOf (key))
+                m |= 1u << (note % 12);
+            if (m != 0)
+                chordMask = m;
+        }
+
+        unsigned chordMaskOrDefault() const noexcept
+        {
+            if (chordMask != 0)
+                return chordMask;
+            unsigned m = 0;   // before any chord: the scale's I in the Chord Group's shape
+            for (const uint8_t note : chordNotes (makeGroupSlot (current.group, current.scale, 0), context))
+                m |= 1u << (note % 12);
+            return m;
+        }
+
+        // A key with Bind Workspace, Palette or Off (KeyRouter.h).
+        void routeKey (int n, int sample, BlockEvents& out) noexcept
+        {
+            auto& h = held[(size_t) n];
+            const auto r = KeyRouter::route (n, current.bind, current.bindStart);
+
+            if (r.kind != KeyRouter::Route::Bound)
+            {
+                // Below the zone: as played. Above it (or Bind Off): Keys-Lock, maybe silent.
+                const int note = r.kind == KeyRouter::Route::Pass
+                                     ? n : keysLockNote (n, current.keysLock, current.key, current.scale, chordMaskOrDefault());
+                h.passThrough = true;
+                if (note >= 0)
+                    voices.start ((VoiceTracker::Source) n, h.channel, note, h.velocity, sample, out);
+                return;
+            }
+
+            if (current.bind == BindSource::Palette)
+            {
+                if (r.white >= 0)
+                    pressChord (n, r.white == 7 ? 0 : r.white, r.white == 7 ? 1 : 0, sample, out);
+                else
+                    pressChord (n, numWhiteSlots + r.black, 0, sample, out);
+                return;
+            }
+
+            // Workspace.
+            if (r.white >= 0)
+            {
+                if (r.white >= workspace.patterns[(size_t) currentPattern].size())
+                    return;                                    // an empty slot: nothing
+                if (playOn && clock.isPlaying())
+                {
+                    player.requestJump (r.white);              // the pattern jumps at the next beat
+                    regenerate = true;
+                    return;
+                }
+                if (chordsPattern != currentPattern)
+                {
+                    SlotFlags changed {};
+                    refreshPatternChords (currentPattern, &changed);
+                    performer.retune (changed, sample, out);   // a chord still held from the old pattern
+                }
+                pressChord (n, numChordSlots + r.white, 0, sample, out);
+            }
+            else if (r.black < numPatterns)
+            {
+                currentPattern = r.black;                      // the player switches at the next bar
+                patternRequest.store (r.black);
+            }
+            else
+            {
+                performer.killAll (sample, out);               // A#: silence until the next slot
+                player.silenceUntilNextSlot();
             }
         }
 
@@ -391,6 +515,12 @@ namespace chordmonkey
         PatternChords patternChords {};
         int chordsPattern = 0;            // the pattern patternChords holds
         bool workspaceChanged = false;
+        int currentPattern = 0;           // the Pattern parameter, or the last pattern key
+        bool settingsSeen = false;
+        bool playOn = false;              // this block: Play, Enable on, not analysing
+        bool regenerate = false;          // a Bind key asked the player for a jump
+        unsigned chordMask = 0;           // the last chord played (pitch classes), for Keys-Lock
+        std::atomic<int> patternRequest { -1 };
         int lastChordSlot = -1;
         bool wasPlaying = false;
         KeyListener listener;

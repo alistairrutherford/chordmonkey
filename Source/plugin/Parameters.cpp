@@ -64,7 +64,7 @@ namespace chordmonkey::params
 
     bool isPresetParameter (const juce::String& paramId)
     {
-        for (const char* excluded : { enable, testPattern, keyOctave, analyse, play, pattern, testWorkspace })
+        for (const char* excluded : { enable, testPattern, keyOctave, analyse, play, pattern, testWorkspace, bindSource, bindStart, keysLock })
             if (paramId == excluded)
                 return false;
         return true;
@@ -141,6 +141,19 @@ namespace chordmonkey::params
         layout.add (std::make_unique<AudioParameterChoice> (id (pattern), "Pattern",
                                                             names (numPatterns, [] (int i) { return juce::String (patternName (i)); }), 0));
         layout.add (std::make_unique<AudioParameterBool> (id (testWorkspace), "Test workspace", false));
+
+        // Phase 3: Bind and Keys-Lock. Appended, never reordered.
+        layout.add (std::make_unique<AudioParameterChoice> (id (bindSource), "Bind",
+                                                            names (numBindSources, [] (int i) { return bindSourceName ((BindSource) i); }), 0));
+        layout.add (std::make_unique<AudioParameterInt> (id (bindStart), "Bind start", 0, KeyRouter::maxBindStart, 36,
+                                                         AudioParameterIntAttributes().withStringFromValueFunction ([] (int v, int)
+                                                         {
+                                                             char name[8];
+                                                             noteName (v, name);
+                                                             return juce::String (name);
+                                                         })));
+        layout.add (std::make_unique<AudioParameterChoice> (id (keysLock), "Keys-Lock",
+                                                            names (numKeysLockModes, [] (int i) { return keysLockName ((KeysLockMode) i); }), 0));
         return layout;
     }
 
@@ -157,6 +170,9 @@ namespace chordmonkey::params
           playParam (state.getRawParameterValue (params::play)),
           patternParam (state.getRawParameterValue (params::pattern)),
           testWorkspaceParam (state.getRawParameterValue (params::testWorkspace)),
+          bindSourceParam (state.getRawParameterValue (params::bindSource)),
+          bindStartParam (state.getRawParameterValue (params::bindStart)),
+          keysLockParam (state.getRawParameterValue (params::keysLock)),
           fxStack (state.getRawParameterValue (params::stack)),
           fxStrum (state.getRawParameterValue (params::strum)),
           fxStrumRate (state.getRawParameterValue (params::strumRate)),
@@ -178,7 +194,7 @@ namespace chordmonkey::params
           fxVoiceLeading (state.getRawParameterValue (params::voiceLeading))
     {
         jassert (enable && keyParam && scale && group && chordOctave && testPattern && progression && keyOctaveParam && analyseParam
-                 && playParam && patternParam && testWorkspaceParam);
+                 && playParam && patternParam && testWorkspaceParam && bindSourceParam && bindStartParam && keysLockParam);
         jassert (fxStack && fxStrum && fxStrumRate && fxArp && fxArpRate && fxArpRange && fxArpGate && fxRepeat && fxRepeatRate
                  && fxRepeatGate && fxSeq && fxSeqPattern && fxSeqSwing && fxSeqGate && fxVelocity && fxVelocityPeak
                  && fxVelocityRange && fxHold && fxVoiceLeading);
@@ -240,6 +256,9 @@ namespace chordmonkey::params
         s.analysing = analyseMode() != AnalyseMode::Off;
         s.play = on (playParam);
         s.pattern = choice (patternParam, numPatterns);
+        s.bind = (BindSource) choice (bindSourceParam, numBindSources);
+        s.bindStart = juce::jlimit (0, KeyRouter::maxBindStart, whole (bindStartParam));
+        s.keysLock = (KeysLockMode) choice (keysLockParam, numKeysLockModes);
         s.fx = chordFx();
         return s;
     }

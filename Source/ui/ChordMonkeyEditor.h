@@ -1,8 +1,9 @@
 // The editor (ChordChimp's PLAN.md §5): one page, about 780×560 and resizable.
 //
-//   top bar      the name · On · presets · Export · Keys
+//   top bar      the name · On · presets · Pattern · Play · Export · Keys
 //   globals      Key · Heard (Analyse, the key heard) · Scale · Chord Group · Progression ·
-//                Octave · Key octave
+//                Octave
+//   keyboard     Bind · From · Keys-Lock · Key octave (Phase 3)
 //   chord pads   the seven white-key chords and the five black-key ones above them (they take
 //                the space the rest leaves)
 //   effects      Strum, Velocity; Arp, Voicing; Repeat, Step seq
@@ -53,6 +54,7 @@ namespace chordmonkey
 
         ui::TopBar topBar;
         ui::GlobalRow globals;
+        ui::KeyboardRow keyboardRow;
         ui::ChordPads chordPads;
         ui::EffectsPanel effects;
         ui::OutputKeyboard outputKeys;

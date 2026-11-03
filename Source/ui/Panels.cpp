@@ -241,12 +241,11 @@ namespace chordmonkey::ui
     //==========================================================================
     GlobalRow::GlobalRow (ChordMonkeyProcessor& p, Bindings& b)
         : heard (p, b), bindings (b), key (b, params::key), scale (b, params::scale), group (b, params::chordGroup), progression (b, params::progression),
-          octave (b, params::chordOctave, "Octave"), keyOctave (b, params::keyOctave, "Key octave")
+          octave (b, params::chordOctave, "Octave")
     {
         progression.setTooltip ("Which chord each white key plays");
         octave.setTooltip ("Chord Octave: the register the chords play in");
-        keyOctave.setTooltip ("Key octave. Ignore: every octave plays the same chord. Follow: the octave you play moves the chord (C2 plays it as written)");
-        for (auto* c : std::initializer_list<juce::Component*> { &key, &heard, &scale, &group, &progression, &octave, &keyOctave })
+        for (auto* c : std::initializer_list<juce::Component*> { &key, &heard, &scale, &group, &progression, &octave })
             addAndMakeVisible (c);
     }
 
@@ -273,31 +272,78 @@ namespace chordmonkey::ui
                        { &scale, widest (params::scale), 2 },
                        { &group, widest (params::chordGroup), 2 },
                        { &progression, widest (params::progression), 2 },
-                       { &octave, 52 + pad, 1 },
-                       { &keyOctave, widest (params::keyOctave), 1 } };
+                       { &octave, 52 + pad, 1 } };
         int spare = getWidth(), weights = 0;
         for (const auto& c : cols)
         {
             spare -= c.min;
             weights += c.weight;
         }
-        int widths[7] {};
+        constexpr size_t numCols = std::size (cols);
+        int widths[numCols] {};
         if (spare < 0)
         {
             // Narrower than the content (not at the editor's sizes): everything shrinks alike.
-            for (size_t i = 0; i < 7; ++i)
+            for (size_t i = 0; i < numCols; ++i)
                 widths[i] = cols[i].min * getWidth() / (getWidth() - spare);
         }
         else
         {
             const int heardMore = juce::jmin (spare, HeardKey::preferredWidth() + pad - cols[1].min);
             spare -= heardMore;
-            for (size_t i = 0; i < 7; ++i)
+            for (size_t i = 0; i < numCols; ++i)
                 widths[i] = cols[i].min + (i == 1 ? heardMore : spare * cols[i].weight / weights);
         }
         auto r = getLocalBounds();
-        for (size_t i = 0; i < 7; ++i)
+        for (size_t i = 0; i < numCols; ++i)
             cols[i].c->setBounds (r.removeFromLeft (widths[i]).reduced (pad / 2, 0));
+    }
+
+    //==========================================================================
+    KeyboardRow::KeyboardRow (Bindings& b)
+        : bindings (b), bind (b, params::bindSource), from (b, params::bindStart, "From"), keysLock (b, params::keysLock),
+          keyOctave (b, params::keyOctave, "Key octave")
+    {
+        bind.setTooltip ("Bind. All keys: every key plays its chord. Workspace: one octave of keys from From plays the "
+                         "pattern's slots (C … C'), C# D# F# G# choose patterns A-D, A# silences until the next slot; "
+                         "while the pattern plays, a slot key jumps to its slot at the next beat. Palette: that octave "
+                         "plays the scale's chords and the borrowed ones. Off: no chords from keys");
+        from.setTooltip ("The Bind zone's first key (a C, or any key: the zone counts from it)");
+        keysLock.setTooltip ("Keys-Lock: the keys above the Bind zone (every key with Bind Off), locked to the scale "
+                             "or to the chord playing");
+        keyOctave.setTooltip ("Key octave (Bind All keys). Ignore: every octave plays the same chord. Follow: the octave "
+                              "you play moves the chord (C2 plays it as written)");
+        for (auto* c : std::initializer_list<juce::Component*> { &bind, &from, &keysLock, &keyOctave })
+            addAndMakeVisible (c);
+    }
+
+    void KeyboardRow::refresh (const UiModel& m)
+    {
+        const bool allKeys = m.settings.bind == BindSource::AllKeys;
+        const bool zone = m.settings.bind == BindSource::Workspace || m.settings.bind == BindSource::Palette;
+        from.setAlpha (zone ? 1.0f : 0.4f);
+        keysLock.setAlpha (allKeys ? 0.4f : 1.0f);
+        keyOctave.setAlpha (allKeys ? 1.0f : 0.4f);
+    }
+
+    void KeyboardRow::resized()
+    {
+        // Each menu the width of its longest choice, From a little slider; left-aligned.
+        constexpr int pad = 8, comboExtra = LookAndFeel::comboArrowWidth + 2 * LookAndFeel::comboTextInset;
+        const auto comboFont = font (13.0f);
+        const auto widest = [&] (const char* id)
+        {
+            int w = 0;
+            if (auto* c = dynamic_cast<juce::AudioParameterChoice*> (bindings.param (id)))
+                for (const auto& t : c->choices)
+                    w = juce::jmax (w, juce::GlyphArrangement::getStringWidthInt (comboFont, t));
+            return w + comboExtra + pad;
+        };
+        auto r = getLocalBounds();
+        bind.setBounds (r.removeFromLeft (widest (params::bindSource)).reduced (pad / 2, 0));
+        from.setBounds (r.removeFromLeft (64 + pad).reduced (pad / 2, 0));
+        keysLock.setBounds (r.removeFromLeft (widest (params::keysLock)).reduced (pad / 2, 0));
+        keyOctave.setBounds (r.removeFromLeft (widest (params::keyOctave)).reduced (pad / 2, 0));
     }
 
     //==========================================================================

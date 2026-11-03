@@ -47,19 +47,19 @@ namespace chordmonkey::ui
         release();
         if (note < 0 || note > 127)
             return;
-        processor.pushUiNote (note, velocity, true);
+        processor.pushUiNote (note, velocity, true, toPalette);
         held = note;
     }
 
     void PlayingKeys::release()
     {
         if (held >= 0)
-            processor.pushUiNote (held, 0, false);
+            processor.pushUiNote (held, 0, false, toPalette);
         held = -1;
     }
 
     //==========================================================================
-    ChordPads::ChordPads (ChordMonkeyProcessor& p) : processor (p), playing (p)
+    ChordPads::ChordPads (ChordMonkeyProcessor& p) : processor (p), playing (p, true)
     {
         setTooltip ("The chords: one per white key and, above them, the black keys' borrowed chords (in any octave). Click or drag across to play");
     }
@@ -140,7 +140,12 @@ namespace chordmonkey::ui
             if (slot == d.lastSlot)
             {
                 g.setColour (lit ? colours::background : colours::chord);
-                g.fillRoundedRectangle (r.reduced (r.getWidth() * 0.25f, 0.0f).removeFromBottom (black ? 3.0f : 4.0f).translated (0.0f, black ? -3.0f : -6.0f), 2.0f);
+                // Under the name; on the black pads, which the Keyboard row (Phase 3) made too short
+                // for that, a bar at the right edge.
+                if (black)
+                    g.fillRoundedRectangle (r.reduced (0.0f, r.getHeight() * 0.25f).removeFromRight (3.0f).translated (-5.0f, 0.0f), 1.5f);
+                else
+                    g.fillRoundedRectangle (r.reduced (r.getWidth() * 0.25f, 0.0f).removeFromBottom (4.0f).translated (0.0f, -6.0f), 2.0f);
             }
         }
     }

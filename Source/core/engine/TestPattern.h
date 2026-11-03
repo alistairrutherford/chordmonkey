@@ -71,7 +71,7 @@ namespace chordmonkey
                 if ((h & 1) == 0)
                 {
                     const int key = KeyRouter::keyForSlot (slotForBeat (h / 2));
-                    if (key >= 0 && out.push (MidiEvent::noteOn (0, key, velocity, sample)))
+                    if (key >= 0 && out.push (MidiEvent::noteOn (0, key, velocity, sample).withOrigin (MidiEvent::fromPalette)))
                         heldKey = key;
                 }
             }
@@ -82,7 +82,7 @@ namespace chordmonkey
         template <class Out>
         void releaseHeld (int sample, Out& out) noexcept
         {
-            if (heldKey >= 0 && out.push (MidiEvent::noteOff (0, heldKey, sample)))
+            if (heldKey >= 0 && out.push (MidiEvent::noteOff (0, heldKey, sample).withOrigin (MidiEvent::fromPalette)))
                 heldKey = -1;
         }
 

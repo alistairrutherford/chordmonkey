@@ -40,13 +40,15 @@ namespace chordmonkey::ui
     class PlayingKeys
     {
     public:
-        explicit PlayingKeys (ChordMonkeyProcessor& p) : processor (p) {}
+        // `palette`: the notes play their key's palette chord whatever Bind is (the chord pads).
+        explicit PlayingKeys (ChordMonkeyProcessor& p, bool palette = false) : processor (p), toPalette (palette) {}
         ~PlayingKeys() { release(); }
         void press (int note, int velocity);
         void release();
 
     private:
         ChordMonkeyProcessor& processor;
+        bool toPalette = false;
         int held = -1;
     };
 

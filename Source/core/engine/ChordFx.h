@@ -235,8 +235,8 @@ namespace chordmonkey
             }
         }
 
-        // Chord key `key` went down: plays chord slot `slot`.
-        void press (int key, int slot, int velocity, int sample, BlockEvents& o) noexcept
+        // Chord key `key` went down: plays chord slot `slot`, `octave` octaves up (a Bind key).
+        void press (int key, int slot, int velocity, int sample, BlockEvents& o, int octave = 0) noexcept
         {
             out = &o;
             if (! validKey (key))
@@ -258,6 +258,7 @@ namespace chordmonkey
             p.keyDown = true;
             p.latched = false;
             p.slot = slot;
+            p.octave = (int8_t) octave;
             p.velocity = (uint8_t) (velocity < 1 ? 1 : (velocity > 127 ? 127 : velocity));
             p.notes = take (key, slot);
             ++alive;
@@ -384,6 +385,7 @@ namespace chordmonkey
             uint32_t gen = 0;             // the pattern: bumped when it restarts or ends
             uint32_t life = 0;            // the performance: bumped when it ends
             int slot = 0;
+            int8_t octave = 0;            // octaves up (a Bind key: Palette's top C)
             uint8_t velocity = 100;
             VoicedNotes notes;
             ArpSettings arp;              // the pattern's arp (pattern Off: strikes)
@@ -421,7 +423,8 @@ namespace chordmonkey
             if (base != nullptr)
                 *base = notes;
             const VoicedNotes stacked = stackNotes (notes, fx.stack);
-            const int shift = followKeyOctave && key != patternKey ? 12 * (key / 12 - KeyRouter::homeC / 12) : 0;
+            const int shift = (followKeyOctave && key != patternKey ? 12 * (key / 12 - KeyRouter::homeC / 12) : 0)
+                            + (validKey (key) ? 12 * perfs[(size_t) key].octave : 0);
             if (shift == 0)
                 return stacked;
             VoicedNotes moved;
