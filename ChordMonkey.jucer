@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="CmkyPj" name="ChordMonkey" projectType="audioplug" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="0" jucerFormatVersion="1" version="1.0.0"
+              companyName="Alistair Rutherford" companyWebsite="https://github.com/alistairrutherford/chordmonkey"
+              bundleIdentifier="com.alistairrutherford.chordmonkey"
+              pluginFormats="buildVST3,buildStandalone" pluginCharacteristicsValue="pluginIsSynth,pluginWantsMidiIn,pluginProducesMidiOut"
+              pluginName="ChordMonkey" pluginDesc="Chords from a scale, arranged into patterns: a MIDI chord workstation"
+              pluginManufacturer="Alistair Rutherford" pluginManufacturerCode="ARut"
+              pluginCode="Cmky" pluginVST3Category="Instrument,Tools"
+              cppLanguageStandard="17">
+  <MAINGROUP id="csMain" name="ChordMonkey">
+    <GROUP id="csSrc0" name="Source">
+      <GROUP id="csGrp0" name="core/theory">
+        <FILE id="csF001" name="Scales.h" compile="0" resource="0" file="Source/core/theory/Scales.h"/>
+        <FILE id="csF002" name="ChordModel.h" compile="0" resource="0" file="Source/core/theory/ChordModel.h"/>
+        <FILE id="csF003" name="ChordGroups.h" compile="0" resource="0" file="Source/core/theory/ChordGroups.h"/>
+        <FILE id="csF019" name="Progressions.h" compile="0" resource="0" file="Source/core/theory/Progressions.h"/>
+        <FILE id="ccF111" name="KeyProfiles.h" compile="0" resource="0" file="Source/core/theory/KeyProfiles.h"/>
+        <FILE id="csF021" name="ChordNamer.h" compile="0" resource="0" file="Source/core/theory/ChordNamer.h"/>
+        <FILE id="csF022" name="RomanNumeral.h" compile="0" resource="0" file="Source/core/theory/RomanNumeral.h"/>
+        <FILE id="csF062" name="VoiceLeading.h" compile="0" resource="0" file="Source/core/theory/VoiceLeading.h"/>
+      </GROUP>
+      <GROUP id="csGrp1" name="core/engine">
+        <FILE id="ccF101" name="ChordEngine.h" compile="0" resource="0" file="Source/core/engine/ChordEngine.h"/>
+        <FILE id="ccF102" name="KeyRouter.h" compile="0" resource="0" file="Source/core/engine/KeyRouter.h"/>
+        <FILE id="ccF110" name="KeyListener.h" compile="0" resource="0" file="Source/core/engine/KeyListener.h"/>
+        <FILE id="csF004" name="MidiEvents.h" compile="0" resource="0" file="Source/core/engine/MidiEvents.h"/>
+        <FILE id="csF005" name="Transport.h" compile="0" resource="0" file="Source/core/engine/Transport.h"/>
+        <FILE id="csF007" name="VoiceTracker.h" compile="0" resource="0" file="Source/core/engine/VoiceTracker.h"/>
+        <FILE id="csF008" name="TestPattern.h" compile="0" resource="0" file="Source/core/engine/TestPattern.h"/>
+        <FILE id="csF024" name="SnapshotExchange.h" compile="0" resource="0" file="Source/core/engine/SnapshotExchange.h"/>
+        <FILE id="csF027" name="Clock.h" compile="0" resource="0" file="Source/core/engine/Clock.h"/>
+        <FILE id="csF028" name="EventQueue.h" compile="0" resource="0" file="Source/core/engine/EventQueue.h"/>
+        <FILE id="csF029" name="NoteValues.h" compile="0" resource="0" file="Source/core/engine/NoteValues.h"/>
+        <FILE id="csF030" name="Stack.h" compile="0" resource="0" file="Source/core/engine/Stack.h"/>
+        <FILE id="csF031" name="Strum.h" compile="0" resource="0" file="Source/core/engine/Strum.h"/>
+        <FILE id="csF032" name="Arp.h" compile="0" resource="0" file="Source/core/engine/Arp.h"/>
+        <FILE id="csF033" name="Repeat.h" compile="0" resource="0" file="Source/core/engine/Repeat.h"/>
+        <FILE id="csF034" name="StepSequencer.h" compile="0" resource="0" file="Source/core/engine/StepSequencer.h"/>
+        <FILE id="csF035" name="VelocityAlgorithm.h" compile="0" resource="0" file="Source/core/engine/VelocityAlgorithm.h"/>
+        <FILE id="csF036" name="Hold.h" compile="0" resource="0" file="Source/core/engine/Hold.h"/>
+        <FILE id="csF037" name="ChordFx.h" compile="0" resource="0" file="Source/core/engine/ChordFx.h"/>
+      </GROUP>
+      <GROUP id="csGrp4" name="core/midiio">
+        <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>
+        <FILE id="csF053" name="ExportRecorder.h" compile="0" resource="0" file="Source/core/midiio/ExportRecorder.h"/>
+      </GROUP>
+      <GROUP id="csGrp2" name="plugin">
+        <FILE id="csF011" name="ChordMonkeyProcessor.h" compile="0" resource="0" file="Source/plugin/ChordMonkeyProcessor.h"/>
+        <FILE id="csF012" name="ChordMonkeyProcessor.cpp" compile="1" resource="0" file="Source/plugin/ChordMonkeyProcessor.cpp"/>
+        <FILE id="csF013" name="Parameters.h" compile="0" resource="0" file="Source/plugin/Parameters.h"/>
+        <FILE id="csF014" name="Parameters.cpp" compile="1" resource="0" file="Source/plugin/Parameters.cpp"/>
+        <FILE id="csF055" name="PresetManager.h" compile="0" resource="0" file="Source/plugin/PresetManager.h"/>
+        <FILE id="csF056" name="PresetManager.cpp" compile="1" resource="0" file="Source/plugin/PresetManager.cpp"/>
+        <FILE id="csF057" name="FactoryPresets.h" compile="0" resource="0" file="Source/plugin/FactoryPresets.h"/>
+        <FILE id="csF058" name="FactoryPresets.cpp" compile="1" resource="0" file="Source/plugin/FactoryPresets.cpp"/>
+      </GROUP>
+      <GROUP id="csGrp3" name="ui">
+        <FILE id="csF017" name="ChordMonkeyEditor.h" compile="0" resource="0" file="Source/ui/ChordMonkeyEditor.h"/>
+        <FILE id="csF018" name="ChordMonkeyEditor.cpp" compile="1" resource="0" file="Source/ui/ChordMonkeyEditor.cpp"/>
+        <FILE id="csF041" name="Theme.h" compile="0" resource="0" file="Source/ui/Theme.h"/>
+        <FILE id="csF042" name="Theme.cpp" compile="1" resource="0" file="Source/ui/Theme.cpp"/>
+        <FILE id="csF043" name="ParamControl.h" compile="0" resource="0" file="Source/ui/ParamControl.h"/>
+        <FILE id="csF044" name="ParamControl.cpp" compile="1" resource="0" file="Source/ui/ParamControl.cpp"/>
+        <FILE id="csF045" name="Keyboards.h" compile="0" resource="0" file="Source/ui/Keyboards.h"/>
+        <FILE id="csF046" name="Keyboards.cpp" compile="1" resource="0" file="Source/ui/Keyboards.cpp"/>
+        <FILE id="csF049" name="Panels.h" compile="0" resource="0" file="Source/ui/Panels.h"/>
+        <FILE id="csF050" name="Panels.cpp" compile="1" resource="0" file="Source/ui/Panels.cpp"/>
+        <FILE id="csF059" name="PresetBar.h" compile="0" resource="0" file="Source/ui/PresetBar.h"/>
+        <FILE id="csF060" name="PresetBar.cpp" compile="1" resource="0" file="Source/ui/PresetBar.cpp"/>
+      </GROUP>
+    </GROUP>
+  </MAINGROUP>
+  <MODULES>
+    <MODULE id="juce_audio_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_plugin_client" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors_headless" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_utils" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_gui_extra" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+  </MODULES>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1" JUCE_VST3_CAN_REPLACE_VST2="0" JUCE_WEB_BROWSER="0"
+               JUCE_USE_CURL="0"/>
+  <EXPORTFORMATS>
+    <XCODE_MAC targetFolder="Builds/MacOSX">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="ChordMonkey" macOSDeploymentTarget="12.0" osxArchitecture="Standard"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="ChordMonkey" macOSDeploymentTarget="12.0" osxArchitecture="Standard"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_audio_basics" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_devices" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_formats" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_plugin_client" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_audio_utils" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_core" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+        <MODULEPATH id="juce_gui_extra" path="/Users/alistairrutherford/Development/JUCE/modules"/>
+      </MODULEPATHS>
+    </XCODE_MAC>
+  </EXPORTFORMATS>
+</JUCERPROJECT>

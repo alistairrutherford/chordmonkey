@@ -1,0 +1,469 @@
+{
+  "source": "Chordism's Source/plugin/FactoryPresets.cpp and Parameters.cpp, written by Tools/dump_chordism_presets.sh",
+  "chordism": "07f6e1a",
+  "defaults": {
+    "enable": 1.0,
+    "key": 0.0,
+    "scale": 0.0,
+    "chordGroup": 0.0,
+    "split": 60.0,
+    "chordOctave": 0.0,
+    "muteChords": 0.0,
+    "muteScale": 0.0,
+    "testPattern": 0.0,
+    "progression": 0.0,
+    "customDegree1": 0.0,
+    "customDegree2": 1.0,
+    "customDegree3": 2.0,
+    "customDegree4": 3.0,
+    "customDegree5": 4.0,
+    "customDegree6": 5.0,
+    "customDegree7": 6.0,
+    "shifterMode": 0.0,
+    "shifter1Kind": 0.0,
+    "shifter1Group": 5.0,
+    "shifter1Key": 0.0,
+    "shifter1Scale": 0.0,
+    "shifter2Kind": 0.0,
+    "shifter2Group": 3.0,
+    "shifter2Key": 0.0,
+    "shifter2Scale": 0.0,
+    "shifter3Kind": 0.0,
+    "shifter3Group": 7.0,
+    "shifter3Key": 0.0,
+    "shifter3Scale": 0.0,
+    "shifter4Kind": 1.0,
+    "shifter4Group": 0.0,
+    "shifter4Key": 0.0,
+    "shifter4Scale": 2.0,
+    "shifter5Kind": 1.0,
+    "shifter5Group": 0.0,
+    "shifter5Key": 0.0,
+    "shifter5Scale": 1.0,
+    "testShifter": 0.0,
+    "stack": 0.0,
+    "strum": 0.0,
+    "strumRate": 2.0,
+    "strumMs": 20.0,
+    "arp": 0.0,
+    "arpRate": 5.0,
+    "arpRange": 1.0,
+    "arpGate": 50.0,
+    "repeat": 0.0,
+    "repeatRate": 3.0,
+    "repeatGate": 50.0,
+    "seq": 0.0,
+    "seqPattern": 0.0,
+    "seqSwing": 0.0,
+    "seqGate": 50.0,
+    "seqSustain": 0.0,
+    "velocity": 0.0,
+    "velocityPeak": 127.0,
+    "velocityRange": 50.0,
+    "hold": 0.0,
+    "seq1Steps": 4369.0,
+    "seq2Steps": 17476.0,
+    "seq3Steps": 5193.0,
+    "seq4Steps": 18761.0,
+    "mapping": 0.0,
+    "inversions": 0.0,
+    "noteRepeat": 0.0,
+    "patternSlot": 0.0,
+    "smartOctave": 0.0,
+    "smartStack": 0.0,
+    "smartSeq": 0.0,
+    "smartSeqPattern": 0.0,
+    "smartSeqSwing": 0.0,
+    "smartSeqGate": 50.0,
+    "smartSeqSustain": 0.0,
+    "smartVelocity": 0.0,
+    "smartVelocityPeak": 127.0,
+    "smartVelocityRange": 50.0,
+    "smartHold": 0.0,
+    "smartSeq1Steps": 4369.0,
+    "smartSeq2Steps": 17476.0,
+    "smartSeq3Steps": 5193.0,
+    "smartSeq4Steps": 18761.0,
+    "pattern1Arp": 0.0,
+    "pattern1Rate": 5.0,
+    "pattern1Range": 1.0,
+    "pattern1Chord": 1.0,
+    "pattern1Gate": 50.0,
+    "pattern2Arp": 1.0,
+    "pattern2Rate": 5.0,
+    "pattern2Range": 1.0,
+    "pattern2Chord": 2.0,
+    "pattern2Gate": 50.0,
+    "pattern3Arp": 2.0,
+    "pattern3Rate": 3.0,
+    "pattern3Range": 2.0,
+    "pattern3Chord": 1.0,
+    "pattern3Gate": 50.0,
+    "pattern4Arp": 10.0,
+    "pattern4Rate": 6.0,
+    "pattern4Range": 1.0,
+    "pattern4Chord": 3.0,
+    "pattern4Gate": 75.0,
+    "pattern5Arp": 8.0,
+    "pattern5Rate": 3.0,
+    "pattern5Range": 2.0,
+    "pattern5Chord": 2.0,
+    "pattern5Gate": 75.0,
+    "testSmart": 0.0,
+    "pattern1Notes": 8.0,
+    "pattern1Rhythm": 0.0,
+    "pattern2Notes": 8.0,
+    "pattern2Rhythm": 0.0,
+    "pattern3Notes": 8.0,
+    "pattern3Rhythm": 0.0,
+    "pattern4Notes": 8.0,
+    "pattern4Rhythm": 0.0,
+    "pattern5Notes": 8.0,
+    "pattern5Rhythm": 0.0,
+    "melodySwing": 0.0,
+    "melodySeed": 1.0,
+    "syncGroup": 0.0,
+    "lookAhead": 3.0,
+    "voiceLeading": 0.0
+  },
+  "presets": [
+    {
+      "category": "Init",
+      "name": "Init",
+      "values": {
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Pop Anthem",
+      "values": {
+        "key": 0.0,
+        "scale": 0.0,
+        "chordGroup": 0.0,
+        "progression": 2.0,
+        "stack": 1.0,
+        "strum": 1.0,
+        "strumRate": 2.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Neo-Soul Keys",
+      "values": {
+        "key": 3.0,
+        "scale": 4.0,
+        "chordGroup": 15.0,
+        "progression": 4.0,
+        "strum": 1.0,
+        "strumRate": 4.0,
+        "velocity": 10.0,
+        "velocityPeak": 110.0,
+        "velocityRange": 30.0,
+        "mapping": 1.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 6.0,
+        "pattern1Rhythm": 1.0,
+        "pattern1Range": 2.0,
+        "pattern1Gate": 70.0,
+        "melodySwing": 35.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "House Stabs",
+      "values": {
+        "key": 9.0,
+        "scale": 1.0,
+        "chordGroup": 5.0,
+        "progression": 3.0,
+        "seq": 1.0,
+        "seqPattern": 1.0,
+        "seqGate": 40.0,
+        "velocity": 12.0,
+        "velocityRange": 40.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Lo-Fi Sevenths",
+      "values": {
+        "key": 5.0,
+        "scale": 0.0,
+        "chordGroup": 5.0,
+        "progression": 3.0,
+        "strum": 1.0,
+        "strumRate": 4.0,
+        "hold": 2.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 6.0,
+        "pattern1Rhythm": 0.0,
+        "pattern1Range": 1.0,
+        "pattern1Gate": 60.0,
+        "melodySwing": 40.0,
+        "melodySeed": 12.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Trap Minor Arps",
+      "values": {
+        "key": 1.0,
+        "scale": 1.0,
+        "chordGroup": 0.0,
+        "progression": 6.0,
+        "arp": 1.0,
+        "arpRate": 6.0,
+        "arpRange": 2.0,
+        "arpGate": 60.0,
+        "velocity": 11.0,
+        "velocityRange": 35.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Reggaeton Dembow",
+      "values": {
+        "key": 7.0,
+        "scale": 1.0,
+        "chordGroup": 0.0,
+        "progression": 7.0,
+        "seq": 1.0,
+        "seqPattern": 3.0,
+        "seqGate": 60.0,
+        "velocity": 13.0,
+        "velocityRange": 30.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Synthwave Drive",
+      "values": {
+        "key": 9.0,
+        "scale": 1.0,
+        "chordGroup": 6.0,
+        "progression": 3.0,
+        "arp": 3.0,
+        "arpRate": 5.0,
+        "arpRange": 2.0,
+        "arpGate": 70.0,
+        "pattern2Arp": 12.0,
+        "pattern2Notes": 8.0,
+        "pattern2Rhythm": 1.0,
+        "pattern2Range": 2.0,
+        "pattern2Gate": 80.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Jazz Two-Five",
+      "values": {
+        "key": 10.0,
+        "scale": 0.0,
+        "chordGroup": 7.0,
+        "progression": 4.0,
+        "strum": 2.0,
+        "strumRate": 2.0,
+        "mapping": 0.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Gospel Thirteenths",
+      "values": {
+        "key": 8.0,
+        "scale": 0.0,
+        "chordGroup": 9.0,
+        "progression": 5.0,
+        "strum": 1.0,
+        "strumRate": 2.0,
+        "velocity": 1.0,
+        "velocityRange": 25.0
+      }
+    },
+    {
+      "category": "Genre",
+      "name": "Bossa Ninths",
+      "values": {
+        "key": 2.0,
+        "scale": 4.0,
+        "chordGroup": 7.0,
+        "progression": 4.0,
+        "seq": 1.0,
+        "seqPattern": 2.0,
+        "seqSwing": 20.0,
+        "seqGate": 70.0
+      }
+    },
+    {
+      "category": "Artist-style",
+      "name": "Cinematic Swells",
+      "values": {
+        "key": 2.0,
+        "scale": 1.0,
+        "chordGroup": 12.0,
+        "progression": 6.0,
+        "stack": 1.0,
+        "hold": 1.0,
+        "velocity": 7.0,
+        "velocityRange": 50.0
+      }
+    },
+    {
+      "category": "Artist-style",
+      "name": "Ambient Pads",
+      "values": {
+        "key": 4.0,
+        "scale": 6.0,
+        "chordGroup": 6.0,
+        "progression": 8.0,
+        "stack": 3.0,
+        "hold": 1.0,
+        "smartHold": 1.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 3.0,
+        "pattern1Rhythm": 5.0,
+        "pattern1Range": 2.0,
+        "pattern1Gate": 100.0
+      }
+    },
+    {
+      "category": "Artist-style",
+      "name": "Funk Rhythm Guitar",
+      "values": {
+        "key": 4.0,
+        "scale": 4.0,
+        "chordGroup": 7.0,
+        "progression": 0.0,
+        "seq": 1.0,
+        "seqPattern": 3.0,
+        "seqGate": 30.0,
+        "velocity": 10.0,
+        "velocityRange": 45.0
+      }
+    },
+    {
+      "category": "Artist-style",
+      "name": "Classic Rock Power",
+      "values": {
+        "key": 4.0,
+        "scale": 7.0,
+        "chordGroup": 1.0,
+        "progression": 2.0,
+        "stack": 1.0,
+        "repeat": 1.0,
+        "repeatRate": 3.0,
+        "repeatGate": 80.0
+      }
+    },
+    {
+      "category": "Artist-style",
+      "name": "Baroque Canon",
+      "values": {
+        "key": 2.0,
+        "scale": 0.0,
+        "chordGroup": 0.0,
+        "progression": 7.0,
+        "arp": 11.0,
+        "arpRate": 5.0,
+        "arpRange": 2.0,
+        "arpGate": 80.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Dreamy",
+      "values": {
+        "key": 5.0,
+        "scale": 6.0,
+        "chordGroup": 6.0,
+        "progression": 8.0,
+        "strum": 1.0,
+        "strumRate": 5.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 6.0,
+        "pattern1Rhythm": 5.0,
+        "pattern1Range": 2.0,
+        "pattern1Gate": 90.0,
+        "melodySeed": 3.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Dark",
+      "values": {
+        "key": 0.0,
+        "scale": 10.0,
+        "chordGroup": 0.0,
+        "progression": 6.0,
+        "chordOctave": -1.0,
+        "stack": 1.0,
+        "velocity": 2.0,
+        "velocityRange": 30.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Uplifting",
+      "values": {
+        "key": 7.0,
+        "scale": 0.0,
+        "chordGroup": 3.0,
+        "progression": 3.0,
+        "arp": 1.0,
+        "arpRate": 4.0,
+        "arpRange": 2.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Melancholy",
+      "values": {
+        "key": 11.0,
+        "scale": 1.0,
+        "chordGroup": 5.0,
+        "progression": 7.0,
+        "strum": 2.0,
+        "strumRate": 4.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 8.0,
+        "pattern1Rhythm": 0.0,
+        "pattern1Range": 1.0,
+        "pattern1Gate": 75.0,
+        "melodySeed": 21.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Tense",
+      "values": {
+        "key": 10.0,
+        "scale": 2.0,
+        "chordGroup": 5.0,
+        "progression": 5.0,
+        "repeat": 1.0,
+        "repeatRate": 5.0,
+        "repeatGate": 35.0,
+        "velocity": 1.0,
+        "velocityRange": 60.0
+      }
+    },
+    {
+      "category": "Vibe",
+      "name": "Bright Melody",
+      "values": {
+        "key": 0.0,
+        "scale": 0.0,
+        "chordGroup": 0.0,
+        "progression": 0.0,
+        "pattern1Chord": 2.0,
+        "pattern1Arp": 12.0,
+        "pattern1Notes": 10.0,
+        "pattern1Rhythm": 1.0,
+        "pattern1Range": 2.0,
+        "pattern1Gate": 70.0,
+        "melodySwing": 20.0,
+        "melodySeed": 42.0
+      }
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  JUCE_VERSION: 8.0.14
+  PLUGINVAL_VERSION: v1.0.4
+
+jobs:
+  macos:
+    name: Core tests, clean install, pluginval, snapshot checks, CPU
+    # macos-14 images are unsupported from 2026-11-02 (actions/runner-images announcement).
+    runs-on: macos-26
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v5
+        with:
+          path: repo
+
+      - name: Checkout JUCE
+        uses: actions/checkout@v5
+        with:
+          repository: juce-framework/JUCE
+          ref: ${{ env.JUCE_VERSION }}
+          path: JUCE
+
+      - name: Core tests (no JUCE needed)
+        run: repo/Tests/run_tests.sh
+
+      - name: Install pluginval
+        run: |
+          curl -fsSL -o pluginval.zip \
+            "https://github.com/Tracktion/pluginval/releases/download/${PLUGINVAL_VERSION}/pluginval_macOS.zip"
+          unzip -q pluginval.zip -d pluginval
+          echo "PLUGINVAL=$GITHUB_WORKSPACE/pluginval/pluginval.app/Contents/MacOS/pluginval" >> "$GITHUB_ENV"
+
+      # The runner is a fresh account: Tools/install.sh builds Projucer, builds the VST3 and the
+      # Standalone from this checkout, signs them ad hoc, installs them in ~/Library/Audio/Plug-Ins
+      # and ~/Applications, and runs pluginval at strictness 10 on the installed VST3.
+      - name: Build, sign and install (Tools/install.sh), pluginval strictness 10
+        run: repo/Tools/install.sh --juce "$GITHUB_WORKSPACE/JUCE" --validate
+
+      # The pixel references are tied to the developer's macOS font rendering, so CI renders the
+      # snapshots without comparing them; every other check runs.
+      - name: Snapshot checks (no pixel comparison) and the CPU benchmark
+        run: |
+          JMOD="$GITHUB_WORKSPACE/JUCE/modules"
+          sed -i '' "s#<MODULEPATH id=\"\([a-z_]*\)\" path=\"[^\"]*\"/>#<MODULEPATH id=\"\1\" path=\"$JMOD\"/>#" \
+              repo/Tests/Snapshot/ChordMonkeySnapshot.jucer
+          export PROJUCER="$GITHUB_WORKSPACE/JUCE/extras/Projucer/Builds/MacOSX/build/Release/Projucer.app/Contents/MacOS/Projucer"
+          repo/Tests/run_snapshot.sh --no-pixels
+          repo/Tests/run_bench.sh 5
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs
+          path: |
+            repo/Tests/build/pluginval
+            repo/Tests/build/snapshot
+            repo/dist/build/xcodebuild.log
+            repo/dist/projucer-build.log
+          if-no-files-found: ignore
