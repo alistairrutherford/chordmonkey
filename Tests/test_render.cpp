@@ -181,6 +181,18 @@ static void testMatchesTheHost()
     const bool read = readMidiFile (bytes.data(), bytes.size(), back, error);
     std::string why;
     check (read && same (song, back, 0, why) && std::abs (back.bpm - 97.0) < 0.01, "the .mid reads back: the same notes and tempo" + (why.empty() ? "" : " (" + why + ")"));
+
+    // Both tracks carry the name (a host names the dropped clip after the notes track).
+    auto named = song;
+    named.name = "ChordMonkey C Eb 4 bars";
+    const auto file = writeMidiFile (named);
+    const std::string meta = std::string ("\xff\x03", 2) + (char) named.name.size() + named.name;
+    const std::string text (file.begin(), file.end());
+    const auto first = text.find (meta);
+    const auto second = first == std::string::npos ? first : text.find (meta, first + 1);
+    const auto notesTrack = text.find ("MTrk", text.find ("MTrk") + 4);
+    check (first != std::string::npos && second != std::string::npos && notesTrack != std::string::npos && first < notesTrack && second > notesTrack,
+           "the name is in both tracks: the tempo track and the notes track");
 }
 
 int main()

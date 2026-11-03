@@ -13,11 +13,14 @@ namespace chordmonkey
     void ChordSetManager::rescan()
     {
         entries.clear();
+        // The library's text is UTF-8 ("iiø7", "ii°"): juce::String (const char*) would read it as
+        // Latin-1, garbling the menu and failing to parse.
+        const auto utf8 = [] (const char* s) { return juce::String::fromUTF8 (s); };
         const auto& factory = factoryChordSets();
         for (int i = 0; i < (int) factory.size(); ++i)
         {
             const auto& s = factory[(size_t) i];
-            entries.add ({ s.category, s.name, s.progression, scaleInfo (s.scale).name, s.style, i, {} });
+            entries.add ({ utf8 (s.category), utf8 (s.name), utf8 (s.progression), utf8 (scaleInfo (s.scale).name), utf8 (s.style), i, {} });
         }
 
         juce::Array<Entry> files;

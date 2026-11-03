@@ -1488,6 +1488,28 @@ namespace
         check (! p->loadChordSet ("I V nonsense", 0) && ! sets.load (-1, 0, false) && p->getWorkspace() == before,
                "a progression that doesn't read, or no such set, changes nothing");
 
+        // Every factory set loads through the manager, its text intact (UTF-8: "iiø7", "ii°").
+        {
+            const auto keep = p->getWorkspace();
+            juce::StringArray failed;
+            int factorySets = 0;
+            for (int i = 0; i < sets.getEntries().size(); ++i)
+            {
+                const auto& entry = sets.getEntries()[i];
+                if (entry.factory < 0)
+                    continue;
+                ++factorySets;
+                const auto& lib = factoryChordSets()[(size_t) entry.factory];
+                if (entry.progression.toStdString() != lib.progression || entry.name.toStdString() != lib.name || ! sets.load (i, 0, false)
+                    || p->getWorkspace().patterns[0].empty())
+                    failed.add (entry.name + " (" + entry.progression + ")");
+            }
+            check (factorySets == numFactoryChordSets && failed.isEmpty(),
+                   "all " + juce::String (factorySets) + " factory chord sets load from the menu's list, text intact"
+                       + (failed.isEmpty() ? juce::String() : ": failed " + failed.joinIntoString (", ")));
+            p->setWorkspace (keep);
+        }
+
         const auto setFolder = ChordSetManager::userFolder().getChildFile (category);
         auto cleared = p->getWorkspace();
         cleared.patterns[3] = Pattern {};

@@ -575,11 +575,12 @@ namespace chordmonkey
             return {};
         }
         const auto s = snapshot.engineSettings();
-        const auto song = renderPattern (w, pattern, s, hostBpm.load(), hostNumerator.load(), hostDenominator.load(), chordsOnly);
-        const auto bytes = writeMidiFile (song);
+        auto song = renderPattern (w, pattern, s, hostBpm.load(), hostNumerator.load(), hostDenominator.load(), chordsOnly);
         const int bars = (int) std::ceil (w.patterns[(size_t) pattern].totalHalfBeats() * 0.5 / 4.0 - 1.0e-9);
         const juce::String name = "ChordMonkey " + juce::String (patternName (pattern)) + " " + juce::String (keyName (s.key)).upToFirstOccurrenceOf ("/", false, false)
                                 + (chordsOnly ? " chords" : "") + " " + juce::String (bars) + (bars == 1 ? " bar" : " bars");
+        song.name = name.toStdString();      // the clip's name in the host
+        const auto bytes = writeMidiFile (song);
         const auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ChordMonkey Export")
                               .getChildFile (juce::File::createLegalFileName (name) + ".mid");
         file.getParentDirectory().createDirectory();

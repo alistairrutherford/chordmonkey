@@ -207,6 +207,21 @@ namespace chordmonkey
         return s + ')';
     }
 
+    // The numeral that names `chord` in `key`, whatever octave it sits in (for display): C in D
+    // is "bVII", where numeralFor, keeping the octave, writes "bVII(-12.-8.-5)" for a C an
+    // octave below the numeral's own.
+    inline std::string numeralName (const WorkspaceChord& chord, int key)
+    {
+        using namespace chordsets_detail;
+        if (chord.empty())
+            return {};
+        const int carry = rootFromC (key, mod12 (chord.root - key)) - chord.root;
+        WorkspaceChord c = chord;
+        for (int i = 0; i < c.size; ++i)
+            c.tones[(size_t) i] = (int8_t) (c.tones[(size_t) i] + carry);
+        return numeralFor (c, key);
+    }
+
     // Reads a progression into `out` (key `key`, up to eight chords).
     inline bool parseProgression (const std::string& text, int key, Pattern& out, std::string& error)
     {

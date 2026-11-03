@@ -327,6 +327,39 @@ static void testNumerals()
     check (same == total, std::to_string (same) + " of " + std::to_string (total) + " typed chords (12 keys × 12 roots × every type) write a numeral that reads back"
                               + (first.empty() ? "" : " (first failure: " + first + ")"));
 
+    // The display name ignores the octave: every typed chord, at C2 + root, in every key.
+    int named = 0, namedTotal = 0;
+    std::string firstName;
+    for (int key = 0; key < 12; ++key)
+        for (int root = 0; root < 12; ++root)
+            for (int type = 0; type < numChordTypes; ++type)
+            {
+                std::array<int, maxWorkspaceTones> t {};
+                const ChordTones ct = chordTypeTones (type);
+                for (int i = 0; i < ct.size; ++i)
+                    t[(size_t) i] = ct.tones[(size_t) i];
+                const auto c = makeWorkspaceChord (root, t.data(), ct.size);
+                const auto text = numeralName (c, key);
+                ++namedTotal;
+                WorkspaceChord back;
+                int half = 0;
+                std::string error;
+                if (text.find ('(') == std::string::npos && parseNumeral (text, key, back, half, error) && back.root == c.root
+                    && back.relativeMask() == c.relativeMask())
+                    ++named;
+                else if (firstName.empty())
+                    firstName = std::to_string (key) + "/" + std::to_string (root) + ": " + text;
+            }
+    {
+        WorkspaceChord cMajor;
+        int half = 0;
+        std::string error;
+        parseNumeral ("I", 0, cMajor, half, error);
+        check (named == namedTotal && numeralName (cMajor, 2) == "bVII" && numeralFor (cMajor, 2).find ('(') != std::string::npos,
+               std::to_string (named) + " of " + std::to_string (namedTotal) + " chords at C2 + root get a plain numeral in every key (C in D: "
+                   + numeralName (cMajor, 2) + ")" + (firstName.empty() ? "" : " (first failure: " + firstName + ")"));
+    }
+
     std::mt19937 rng (11);
     int sameRandom = 0;
     for (int r = 0; r < 2000; ++r)

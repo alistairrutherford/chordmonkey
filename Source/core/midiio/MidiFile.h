@@ -6,7 +6,8 @@
 //                  track's notes, paired on (channel, pitch) in order, with running status,
 //                  note-on velocity 0 as a note-off, and the first tempo and time signature
 //   writeMidiFile  type 1, `ppq` ticks per quarter (Export: 960): track 1 has the name, tempo
-//                  and time signature, track 2 the notes (at one tick, note-offs first)
+//                  and time signature, track 2 the name again (Live names a dropped clip after
+//                  it) and the notes (at one tick, note-offs first)
 #pragma once
 
 #include <algorithm>
@@ -142,6 +143,13 @@ namespace chordmonkey
             return ! a.on && b.on;        // note-offs first at one tick
         });
         std::vector<uint8_t> n;
+        if (! song.name.empty())          // the notes track named too: a DAW names the clip after it
+        {
+            putVarLen (n, 0);
+            n.insert (n.end(), { 0xff, 0x03 });
+            putVarLen (n, (uint32_t) song.name.size());
+            n.insert (n.end(), song.name.begin(), song.name.end());
+        }
         int64_t now = 0;
         for (const auto& e : events)
         {

@@ -416,7 +416,7 @@ namespace chordmonkey::ui
             g.setFont (font (juce::jlimit (12.0f, 16.0f, r.getHeight() * 0.36f), true));
             g.drawFittedText (namePatternSlot (s, model.settings.key, model.settings.scale).text(), text.removeFromTop (text.getHeight() * 0.55f).toNearestInt(),
                               juce::Justification::centredBottom, 1, 0.7f);
-            const auto numeral = juce::String (numeralFor (s.chord, model.settings.key));
+            const auto numeral = juce::String (numeralName (s.chord, model.settings.key));
             g.setColour (lit ? colours::background.withAlpha (0.75f) : colours::dim);
             g.setFont (font (10.5f));
             g.drawFittedText ((numeral.containsChar ('(') ? juce::String() : numeral + juce::String::fromUTF8 (" \xc2\xb7 ")) + lengthText (s.halfBeats),
