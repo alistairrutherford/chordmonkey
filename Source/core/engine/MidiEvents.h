@@ -64,6 +64,19 @@ namespace chordmonkey
         void clear() noexcept { count = 0; }
         int size() const noexcept { return count; }
         int space() const noexcept { return Capacity - count; }
+
+        // Stable insertion sort by sample (a few events merged into a sorted block).
+        void sortBySample() noexcept
+        {
+            for (int i = 1; i < count; ++i)
+            {
+                const MidiEvent e = events[(size_t) i];
+                int j = i;
+                for (; j > 0 && events[(size_t) j - 1].sample > e.sample; --j)
+                    events[(size_t) j] = events[(size_t) j - 1];
+                events[(size_t) j] = e;
+            }
+        }
         const MidiEvent& operator[] (int i) const noexcept { return events[(size_t) i]; }
         const MidiEvent* begin() const noexcept { return events.data(); }
         const MidiEvent* end() const noexcept { return events.data() + count; }

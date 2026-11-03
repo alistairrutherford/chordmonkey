@@ -143,6 +143,12 @@ namespace chordmonkey
         // lines starting with # are skipped.
         static juce::File testWorkspaceFile();
 
+        // While Test workspace is on, keys are also played from this file (Phase 3, for the
+        // bridge's checks in Live, whose bridge can't launch a clip): each line is "beat note
+        // length" (song position and length in beats), played while the host plays, as host
+        // MIDI on channel 1 at velocity 100. Up to 256 keys; lines starting with # are skipped.
+        static juce::File testKeysFile();
+
         // Status for the editor and tests (written by the audio thread).
         std::atomic<int> lastChordSlot { -1 };
         std::atomic<int> soundingNotes { 0 };
@@ -193,7 +199,16 @@ namespace chordmonkey
         int heardModeWritten = -1;
         void writeHeardKey();
         void readTestWorkspace();
-        juce::Time testWorkspaceRead;
+        juce::Time testWorkspaceRead, testKeysRead;
+
+        struct TestKeys
+        {
+            struct Key { double from = 0.0, to = 0.0; uint8_t note = 0; };
+            std::array<Key, 256> keys {};
+            int count = 0;
+        };
+        SnapshotExchange<TestKeys> testKeysForAudio;   // message thread → audio thread
+        void addTestKeys (const Transport&, int numSamples) noexcept;
         juce::String presetName { "Init" }, presetCategory { "Init" };
         mutable juce::CriticalSection workspaceLock;
         Workspace workspace;

@@ -174,6 +174,9 @@ namespace chordmonkey
             }
         }
 
+        if (snapshot.testWorkspace() && ! bypassed)
+            addTestKeys (transport, numSamples);
+
         if (workspaceForAudio.hasNew())
             engine.setWorkspace (workspaceForAudio.read());
 
@@ -323,10 +326,61 @@ namespace chordmonkey
         return testTakeFile().getSiblingFile ("Workspace.txt");
     }
 
+    juce::File ChordMonkeyProcessor::testKeysFile()
+    {
+        return testTakeFile().getSiblingFile ("Keys.txt");
+    }
+
+    // Audio thread: the test rig's keys that start or end in this block, into `input`.
+    void ChordMonkeyProcessor::addTestKeys (const Transport& t, int numSamples) noexcept
+    {
+        const TestKeys& k = testKeysForAudio.read();
+        if (! t.playing || k.count == 0 || numSamples <= 0)
+            return;
+        const double spb = t.samplesPerBeat();
+        const double from = t.ppq, to = t.ppq + numSamples / spb;
+        bool added = false;
+        for (int i = 0; i < k.count; ++i)
+        {
+            const auto& key = k.keys[(size_t) i];
+            for (const bool on : { true, false })
+            {
+                const double at = on ? key.from : key.to;
+                if (at >= from && at < to && input.space() > inputReserve)
+                {
+                    const int sample = juce::jlimit (0, numSamples - 1, (int) std::llround ((at - from) * spb));
+                    input.push (on ? MidiEvent::noteOn (0, key.note, 100, sample) : MidiEvent::noteOff (0, key.note, sample));
+                    added = true;
+                }
+            }
+        }
+        if (added)
+            input.sortBySample();
+    }
+
     void ChordMonkeyProcessor::readTestWorkspace()
     {
         const auto file = testWorkspaceFile();
         const auto modified = file.getLastModificationTime();
+        if (const auto keysFile = testKeysFile(); keysFile.existsAsFile() && keysFile.getLastModificationTime() != testKeysRead)
+        {
+            testKeysRead = keysFile.getLastModificationTime();
+            TestKeys k;
+            juce::StringArray lines;
+            keysFile.readLines (lines);
+            for (const auto& line : lines)
+            {
+                const auto t = juce::StringArray::fromTokens (line, " \t", "");
+                if (line.trimStart().startsWithChar ('#') || t.size() < 3 || k.count == (int) k.keys.size())
+                    continue;
+                const double from = t[0].getDoubleValue(), length = t[2].getDoubleValue();
+                const int note = t[1].getIntValue();
+                if (note >= 0 && note <= 127 && length > 0.0 && std::isfinite (from) && std::isfinite (length))
+                    k.keys[(size_t) k.count++] = { from, from + length, (uint8_t) note };
+            }
+            testKeysForAudio.publish (k);
+        }
+
         if (! file.existsAsFile() || modified == testWorkspaceRead)
             return;
         testWorkspaceRead = modified;

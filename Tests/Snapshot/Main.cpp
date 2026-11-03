@@ -1325,6 +1325,44 @@ namespace
             check (start != nullptr && start->getCurrentValueAsText() == "C1" && start->getRange().getEnd() == 115,
                    "Bind start shows note names (C1) and reaches 115");
         }
+        {
+            // The test rig's Keys.txt: keys at song positions while the host plays.
+            const auto keysFile = ChordMonkeyProcessor::testKeysFile();
+            const bool hadKeys = keysFile.existsAsFile();
+            const auto previousKeys = hadKeys ? keysFile.loadFileAsString() : juce::String();
+            keysFile.replaceWithText ("# beat note length\n0.5 36 0.5\n1 bad\n1.5 38 0.25\n");
+            auto q = std::make_unique<ChordMonkeyProcessor>();
+            q->prepareToPlay (48000.0, 512);
+            set (*q, params::testWorkspace, 1.0f);
+            runTimers (150);
+            LoopPlayHead head;
+            head.looping = false;
+            head.bpm = 120.0;
+            q->setPlayHead (&head);
+            juce::AudioBuffer<float> buffer (2, 512);
+            juce::MidiBuffer midi;
+            midi.ensureSize (1 << 16);
+            std::vector<std::pair<double, int>> ons;
+            for (int b = 0; b < 100; ++b)   // 2.1 beats
+            {
+                midi.clear();
+                const double ppq = head.ppq;
+                q->processBlock (buffer, midi);
+                for (const auto m : midi)
+                    if (m.getMessage().isNoteOn())
+                        ons.push_back ({ ppq + m.samplePosition / 24000.0, m.getMessage().getNoteNumber() });
+                head.advance (512, 48000.0);
+            }
+            q->setPlayHead (nullptr);
+            bool onTime = ons.size() == 6;
+            for (const auto& [at, note] : ons)
+                onTime = onTime && std::abs (at - (note == 48 || note == 52 || note == 55 ? 0.5 : 1.5)) < 1.0 / 24000.0 + 1.0e-9;
+            check (onTime, "Keys.txt (with Test workspace on) plays C and D at beats 0.5 and 1.5, to the sample (" + juce::String ((int) ons.size()) + " note-ons)");
+            if (hadKeys)
+                keysFile.replaceWithText (previousKeys);
+            else
+                keysFile.deleteFile();
+        }
     }
 }
 
