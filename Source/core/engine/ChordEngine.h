@@ -376,6 +376,8 @@ namespace chordmonkey
                     if (current.analysing)
                         listener.noteOn (n, h.velocity, timeAt (sample));
                 }
+                else if (e.origin == MidiEvent::fromWorkspace)
+                    pressPatternSlot (n, n - MidiEvent::workspaceKey, sample, out);
                 else if (e.origin == MidiEvent::fromPalette || current.bind == BindSource::AllKeys)
                     pressChord (n, KeyRouter::slotOf (n), 0, sample, out);
                 else
@@ -429,6 +431,21 @@ namespace chordmonkey
             return m;
         }
 
+        // Key `n` plays slot `slot` of the current pattern while held (a Bind key, or the editor's
+        // preview); nothing for an empty slot.
+        void pressPatternSlot (int n, int slot, int sample, BlockEvents& out) noexcept
+        {
+            if (slot < 0 || slot >= workspace.patterns[(size_t) currentPattern].size())
+                return;
+            if (chordsPattern != currentPattern)
+            {
+                SlotFlags changed {};
+                refreshPatternChords (currentPattern, &changed);
+                performer.retune (changed, sample, out);   // a chord still held from the old pattern
+            }
+            pressChord (n, numChordSlots + slot, 0, sample, out);
+        }
+
         // A key with Bind Workspace, Palette or Off (KeyRouter.h).
         void routeKey (int n, int sample, BlockEvents& out) noexcept
         {
@@ -466,13 +483,7 @@ namespace chordmonkey
                     regenerate = true;
                     return;
                 }
-                if (chordsPattern != currentPattern)
-                {
-                    SlotFlags changed {};
-                    refreshPatternChords (currentPattern, &changed);
-                    performer.retune (changed, sample, out);   // a chord still held from the old pattern
-                }
-                pressChord (n, numChordSlots + r.white, 0, sample, out);
+                pressPatternSlot (n, r.white, sample, out);
             }
             else if (r.black < numPatterns)
             {

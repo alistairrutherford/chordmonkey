@@ -183,6 +183,10 @@ namespace chordmonkey
         output.clear();
         engine.process (settings, transport, input.begin(), input.size(), numSamples, output);
         playingPattern.store (engine.getPlayingPattern(), std::memory_order_relaxed);
+        if (transport.bpm > 0.0 && std::isfinite (transport.bpm))
+            hostBpm.store (transport.bpm, std::memory_order_relaxed);
+        hostNumerator.store (transport.numerator, std::memory_order_relaxed);
+        hostDenominator.store (transport.denominator, std::memory_order_relaxed);
         playingSlot.store (engine.getPlayingSlot(), std::memory_order_relaxed);
         recorder.record (transport, numSamples, output.begin(), output.size());
 
@@ -440,6 +444,17 @@ namespace chordmonkey
             updateHostDisplay (ChangeDetails().withNonParameterStateChanged (true));
     }
 
+    void ChordMonkeyProcessor::pushSlotPreview (int slot, bool on) noexcept
+    {
+        if (slot < 0 || slot >= numPatternSlots)
+            return;
+        const int note = MidiEvent::workspaceKey + slot;
+        const auto scope = uiFifo.write (1);
+        const MidiEvent e = (on ? MidiEvent::noteOn (0, note, 100, 0) : MidiEvent::noteOff (0, note, 0)).withOrigin (MidiEvent::fromWorkspace);
+        if (scope.blockSize1 > 0) uiNotes[(size_t) scope.startIndex1] = e;
+        else if (scope.blockSize2 > 0) uiNotes[(size_t) scope.startIndex2] = e;
+    }
+
     //==========================================================================
     // Programs and presets.
 
@@ -549,6 +564,31 @@ namespace chordmonkey
         const auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ChordMonkey Export")
                               .getChildFile (juce::File::createLegalFileName (name) + ".mid");
         return writeTake (file, error) ? file : juce::File();
+    }
+
+    juce::File ChordMonkeyProcessor::writePatternExport (int pattern, bool chordsOnly, juce::String& error)
+    {
+        const auto w = getWorkspace();
+        if (pattern < 0 || pattern >= numPatterns || w.patterns[(size_t) pattern].empty())
+        {
+            error = "Nothing to drag: the pattern is empty.";
+            return {};
+        }
+        const auto s = snapshot.engineSettings();
+        const auto song = renderPattern (w, pattern, s, hostBpm.load(), hostNumerator.load(), hostDenominator.load(), chordsOnly);
+        const auto bytes = writeMidiFile (song);
+        const int bars = (int) std::ceil (w.patterns[(size_t) pattern].totalHalfBeats() * 0.5 / 4.0 - 1.0e-9);
+        const juce::String name = "ChordMonkey " + juce::String (patternName (pattern)) + " " + juce::String (keyName (s.key)).upToFirstOccurrenceOf ("/", false, false)
+                                + (chordsOnly ? " chords" : "") + " " + juce::String (bars) + (bars == 1 ? " bar" : " bars");
+        const auto file = juce::File::getSpecialLocation (juce::File::tempDirectory).getChildFile ("ChordMonkey Export")
+                              .getChildFile (juce::File::createLegalFileName (name) + ".mid");
+        file.getParentDirectory().createDirectory();
+        if (! file.replaceWithData (bytes.data(), bytes.size()))
+        {
+            error = "Couldn't write " + file.getFullPathName();
+            return {};
+        }
+        return file;
     }
 
     juce::AudioProcessorEditor* ChordMonkeyProcessor::createEditor()

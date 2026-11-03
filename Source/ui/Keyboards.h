@@ -22,6 +22,8 @@ namespace chordmonkey::ui
         EngineSettings settings;          // the parameters now
         params::AnalyseMode analyse = params::AnalyseMode::Off;
         KeyGuess guess;                   // the key heard in Analyse mode
+        Workspace workspace;              // Phase 6: the patterns
+        int playingPattern = 0, playingSlot = -1;
     };
 
     // Piano geometry for notes lo..hi (both white keys) across a width.
@@ -67,11 +69,15 @@ namespace chordmonkey::ui
         void mouseDrag (const juce::MouseEvent&) override;
         void mouseUp (const juce::MouseEvent&) override;
 
+        // Right-click's "Add to the pattern" (Phase 6): the pad's slot (0..11).
+        std::function<void (int)> onAddToPattern;
+
     private:
         ChordMonkeyProcessor& processor;
         PlayingKeys playing;
         UiModel model;
         std::array<bool, numChordSlots> active {};
+        int lastPad = -1;                 // the pad pressed or played last (what a drag out takes)
     };
 
     class OutputKeyboard : public juce::Component,

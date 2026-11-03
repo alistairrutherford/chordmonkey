@@ -11,11 +11,12 @@ namespace chordmonkey
     ChordMonkeyEditor::ChordMonkeyEditor (ChordMonkeyProcessor& p)
         : AudioProcessorEditor (p), processor (p), bindings (p.state),
           topBar (p, bindings, [this] (bool shown) { showKeyboard (shown); }),
-          globals (p, bindings), keyboardRow (bindings), chordPads (p), effects (bindings), outputKeys (p)
+          globals (p, bindings), keyboardRow (bindings), chordPads (p), workspace (p, bindings), effects (bindings), outputKeys (p)
     {
         setLookAndFeel (&lookAndFeel);
-        for (auto* c : std::initializer_list<juce::Component*> { &topBar, &globals, &keyboardRow, &chordPads, &effects, &outputKeys })
+        for (auto* c : std::initializer_list<juce::Component*> { &topBar, &globals, &keyboardRow, &chordPads, &workspace, &effects, &outputKeys })
             addAndMakeVisible (c);
+        chordPads.onAddToPattern = [this] (int pad) { workspace.addPaletteChord (pad); };
 
         // Read the saved preferences before anything resizes the editor: setResizeLimits and the
         // first layouts would otherwise store 0×0, then the minimum, over the saved size. Nothing
@@ -67,7 +68,9 @@ namespace chordmonkey
         keyboardRow.setBounds (r.removeFromTop (42));
         r.removeFromTop (8);
         effects.setBounds (r.removeFromBottom (ui::EffectsPanel::preferredHeight()));
-        r.removeFromBottom (12);
+        r.removeFromBottom (8);
+        workspace.setBounds (r.removeFromBottom (ui::WorkspacePanel::preferredHeight()));
+        r.removeFromBottom (8);
         // The pads take the space left, up to a height that still looks like pads; any more is
         // shared above and below them.
         chordPads.setBounds (r.withSizeKeepingCentre (r.getWidth(), juce::jmin (r.getHeight(), maxPadHeight)));
@@ -88,10 +91,14 @@ namespace chordmonkey
         m.settings = processor.currentSettings();
         m.analyse = processor.analyseMode();
         m.guess = processor.readKeyGuess();
+        m.workspace = processor.getWorkspace();
+        m.playingPattern = processor.playingPattern.load();
+        m.playingSlot = processor.playingSlot.load();
 
         globals.refresh (m);
         keyboardRow.refresh (m);
         chordPads.refresh (m);
+        workspace.refresh (m);
         outputKeys.refresh (m);
         effects.refresh (m);
     }

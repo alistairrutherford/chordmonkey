@@ -5,15 +5,10 @@ namespace chordmonkey::ui
 {
     //==========================================================================
     TopBar::TopBar (ChordMonkeyProcessor& p, Bindings& b, std::function<void (bool)> showKeyboard)
-        : presets (p), exportHandle (p), enable (b, params::enable, "On"),
-          pattern (b, params::pattern, {}, false), play (b, params::play, "Play")
+        : presets (p), exportHandle (p), enable (b, params::enable, "On")
     {
         enable.setTooltip ("On: chords from every key. Off: notes pass through unchanged");
-        pattern.setTooltip ("Pattern: which of the workspace's four patterns plays (a change while playing waits for the next bar)");
-        play.setTooltip ("Play: the pattern's chords play in time while the host plays");
         addAndMakeVisible (enable);
-        addAndMakeVisible (pattern);
-        addAndMakeVisible (play);
         addAndMakeVisible (presets);
         addAndMakeVisible (exportHandle);
         keyboardButton.setClickingTogglesState (true);
@@ -50,10 +45,6 @@ namespace chordmonkey::ui
         keyboardButton.setBounds (r.removeFromRight (52).withSizeKeepingCentre (52, 28));
         r.removeFromRight (8);
         exportHandle.setBounds (r.removeFromRight (104).withSizeKeepingCentre (104, 28));
-        r.removeFromRight (12);
-        play.setBounds (r.removeFromRight (52).withSizeKeepingCentre (52, 28));
-        r.removeFromRight (6);
-        pattern.setBounds (r.removeFromRight (56).withSizeKeepingCentre (56, 28));
         r.removeFromRight (12);
         presets.setBounds (r.removeFromLeft (juce::jmin (r.getWidth(), 360)).withTrimmedBottom (2));
     }

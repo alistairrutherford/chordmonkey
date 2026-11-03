@@ -47,6 +47,7 @@
         <FILE id="cmF002" name="Workspace.h" compile="0" resource="0" file="Source/core/model/Workspace.h"/>
         <FILE id="cmF003" name="ChordSets.h" compile="0" resource="0" file="Source/core/model/ChordSets.h"/>
         <FILE id="cmF004" name="ChordSetLibrary.h" compile="0" resource="0" file="Source/core/model/ChordSetLibrary.h"/>
+        <FILE id="cmF007" name="PatternRender.h" compile="0" resource="0" file="Source/core/midiio/PatternRender.h"/>
       </GROUP>
       <GROUP id="csGrp4" name="core/midiio">
         <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>
@@ -77,6 +78,8 @@
         <FILE id="csF050" name="Panels.cpp" compile="1" resource="0" file="Source/ui/Panels.cpp"/>
         <FILE id="csF059" name="PresetBar.h" compile="0" resource="0" file="Source/ui/PresetBar.h"/>
         <FILE id="csF060" name="PresetBar.cpp" compile="1" resource="0" file="Source/ui/PresetBar.cpp"/>
+        <FILE id="cmF008" name="WorkspacePanel.h" compile="0" resource="0" file="Source/ui/WorkspacePanel.h"/>
+        <FILE id="cmF009" name="WorkspacePanel.cpp" compile="1" resource="0" file="Source/ui/WorkspacePanel.cpp"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

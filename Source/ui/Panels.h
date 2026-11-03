@@ -1,8 +1,8 @@
 // The editor's panels (ChordChimp's PLAN.md §5):
 //
-//   TopBar         the name · On · the preset browser · Pattern (A-D) · Play · Export (drag out
-//                  the last bars played) · Keys (show or hide the output keyboard). Pattern and
-//                  Play sit here until the workspace gets its own panel (PLAN.md Phase 6)
+//   TopBar         the name · On · the preset browser · Export (drag out the last bars played) ·
+//                  Keys (show or hide the output keyboard). Pattern and Play are in the
+//                  workspace panel (Phase 6, WorkspacePanel.h)
 //   GlobalRow      Key · Heard · Scale · Chord Group · Progression · Octave
 //   KeyboardRow    Bind · From (the Bind zone's first key) · Keys-Lock · Key octave (Phase 3,
 //                  PLAN.md §3.3); what doesn't apply to the Bind chosen is dimmed
@@ -34,7 +34,7 @@ namespace chordmonkey::ui
         ExportHandle exportHandle;
 
     private:
-        ParamControl enable, pattern, play;
+        ParamControl enable;
         juce::TextButton keyboardButton { "Keys" };
         juce::Rectangle<int> nameArea;
     };

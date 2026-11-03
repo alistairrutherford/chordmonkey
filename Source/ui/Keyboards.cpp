@@ -61,7 +61,8 @@ namespace chordmonkey::ui
     //==========================================================================
     ChordPads::ChordPads (ChordMonkeyProcessor& p) : processor (p), playing (p, true)
     {
-        setTooltip ("The chords: one per white key and, above them, the black keys' borrowed chords (in any octave). Click or drag across to play");
+        setTooltip ("The chords: one per white key and, above them, the black keys' borrowed chords (in any octave). Click or drag across to play; "
+                    "drag one down onto the workspace, or right-click it, to add it to the pattern");
     }
 
     void ChordPads::refresh (const UiModel& m)
@@ -152,14 +153,38 @@ namespace chordmonkey::ui
 
     void ChordPads::mouseDown (const juce::MouseEvent& e)
     {
-        if (! e.mods.isPopupMenu())
-            mouseDrag (e);
+        lastPad = slotAt (e.position);
+        if (e.mods.isPopupMenu())
+        {
+            // Phase 6: put the pad's chord in the workspace.
+            if (lastPad >= 0 && onAddToPattern)
+            {
+                juce::PopupMenu m;
+                m.addItem ("Add to the pattern", [this, pad = lastPad] { onAddToPattern (pad); });
+                m.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (localAreaToGlobal (padBounds (lastPad).toNearestInt())));
+            }
+            return;
+        }
+        mouseDrag (e);
     }
 
     void ChordPads::mouseDrag (const juce::MouseEvent& e)
     {
+        if (e.mods.isPopupMenu())
+            return;
+        // Out of the pads (Phase 6): the last pad played is dragged, to drop on the workspace.
+        if (! getLocalBounds().toFloat().contains (e.position) && lastPad >= 0)
+        {
+            playing.release();
+            if (auto* container = juce::DragAndDropContainer::findParentDragContainerFor (this); container != nullptr && ! container->isDragAndDropActive())
+                container->startDragging ("palette:" + juce::String (lastPad), this);
+            return;
+        }
         if (const int slot = slotAt (e.position); slot >= 0)
+        {
+            lastPad = slot;
             playing.press (KeyRouter::keyForSlot (slot), 100);
+        }
     }
 
     void ChordPads::mouseUp (const juce::MouseEvent&) { playing.release(); }

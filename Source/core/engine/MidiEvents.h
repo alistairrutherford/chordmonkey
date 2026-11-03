@@ -15,8 +15,10 @@ namespace chordmonkey
 
         // Where a key event comes from (Phase 3): the host's MIDI or an on-screen key, routed by
         // Bind and Keys-Lock; or the editor's chord pads and the test pattern, which always play
-        // the palette chord of their key (KeyRouter::slotOf).
-        enum Origin : uint8_t { fromKeys = 0, fromPalette = 1 };
+        // the palette chord of their key (KeyRouter::slotOf); or (Phase 6) the editor's workspace
+        // slots: note workspaceKey + n plays slot n of the current pattern while held.
+        enum Origin : uint8_t { fromKeys = 0, fromPalette = 1, fromWorkspace = 2 };
+        static constexpr int workspaceKey = 120;   // keys 120-127: the eight slots
         uint8_t origin = fromKeys;
 
         MidiEvent withOrigin (uint8_t o) const noexcept { MidiEvent e = *this; e.origin = o; return e; }

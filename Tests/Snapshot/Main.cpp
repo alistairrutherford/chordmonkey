@@ -38,6 +38,8 @@
 //   8. chord sets the Songwriting presets fill the workspace, others leave it, user presets
 //                 hold it, a ChordChimp preset loads, chord sets load (with suggestions) and save
 //                 (Phase 5)
+//   9. workspace  the workspace panel's actions, drops from the pads and between slots, the
+//                 preview, and the MIDI drag file = the render (Phase 6)
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -220,6 +222,14 @@ namespace
         block (p, { juce::MidiMessage::noteOn (1, 52, (juce::uint8) 100), juce::MidiMessage::noteOn (1, 74, (juce::uint8) 100),
                     juce::MidiMessage::noteOn (1, 63, (juce::uint8) 100) });
         block (p, {});
+        // Phase 6: a pattern in the workspace, its second slot shown sounding.
+        Workspace w;
+        std::string error;
+        parseProgression ("I V vi:2 IV:2 ii7 V7sus4:2 V7:2", 0, w.patterns[0], error);
+        w.patterns[0].slots[2].inversion = 1;
+        p.setWorkspace (w);
+        p.playingPattern = 0;
+        p.playingSlot = 1;
     }
 }
 
@@ -1519,6 +1529,126 @@ namespace
     }
 }
 
+namespace
+{
+    // The workspace panel (PLAN.md §5, Phase 6): its actions, a drop, the preview, the drag-out.
+    void testWorkspacePanel()
+    {
+        std::cout << "== workspace panel (Phase 6) ==\n";
+        auto p = std::make_unique<ChordMonkeyProcessor>();
+        p->prepareToPlay (48000.0, 512);
+        auto editor = std::unique_ptr<ChordMonkeyEditor> (dynamic_cast<ChordMonkeyEditor*> (p->createEditor()));
+        auto& panel = editor->getWorkspacePanel();
+        auto names = [&] (int pattern = 0)
+        {
+            editor->refreshNow();
+            const auto w = p->getWorkspace();
+            const auto s = p->currentSettings();
+            juce::StringArray out;
+            for (int i = 0; i < w.patterns[(size_t) pattern].size(); ++i)
+                out.add (namePatternSlot (w.patterns[(size_t) pattern].slots[(size_t) i], s.key, s.scale).text());
+            return out.joinIntoString (" ");
+        };
+        editor->refreshNow();
+
+        panel.addPaletteChord (0);
+        panel.addPaletteChord (4);
+        panel.addPaletteChord (5, 0);
+        check (names() == "Am G", "pads C and G added, then A's chord dropped on the first slot: Am G (" + names() + ")");
+
+        // A drop from the pads, as the drag-and-drop container delivers it.
+        const auto slot1 = panel.slotBounds (1).getCentre().toInt();
+        panel.itemDropped ({ "palette:3", &editor->getChordPads(), slot1 });
+        const auto empty = panel.slotBounds (5).getCentre().toInt();
+        panel.itemDropped ({ "palette:1", &editor->getChordPads(), empty });
+        check (names() == "Am F Dm", "dropping F's pad on slot 2 replaces it; Dm past the end appends (" + names() + ")");
+        panel.itemDropped ({ "slot:2", &panel, panel.slotBounds (0).getCentre().toInt() });
+        check (names() == "Dm Am F", "a slot dragged to the first place moves it (" + names() + ")");
+
+        panel.setSlotLength (0, 4);
+        panel.setSlotInversion (1, 1);
+        panel.setSlotOctave (2, 1);
+        panel.duplicateSlot (2);
+        panel.deleteSlot (0);
+        const auto w = p->getWorkspace();
+        check (names() == "Am/C F F" && w.patterns[0].slots[0].halfBeats == 8 && w.patterns[0].slots[1].octave == 1 && w.patterns[0].slots[2].octave == 1,
+               "length, inversion (Am/C), octave, duplicate and delete (" + names() + ")");
+
+        set (*p, params::key, 2.0f);
+        panel.transposeToKey();
+        panel.copyPatternTo (2);
+        check (names() == "Bm/D G G" && names (2) == names() && p->getWorkspace().patterns[0].key == 2,
+               "Transpose to D moves it up a tone (Bm/D G G); Copy to C copies it");
+        panel.clearPattern();
+        check (p->getWorkspace().patterns[0].empty() && p->getWorkspace().patterns[0].key == 2 && ! p->getWorkspace().patterns[2].empty(),
+               "Clear empties A only");
+
+        int fourChords = -1;
+        p->chordSets.rescan();
+        for (int i = 0; i < p->chordSets.getEntries().size(); ++i)
+            if (p->chordSets.getEntries()[i].name == "Four Chords" && p->chordSets.getEntries()[i].factory >= 0)
+                fourChords = i;
+        panel.setUsesSuggestions (false);
+        set (*p, params::style, 0.0f);
+        panel.loadChordSet (fourChords);
+        check (names() == "D A Bm G" && (int) get (*p, params::style) == 0, "Chord sets: Four Chords into A in D, its style not taken (" + names() + ")");
+        panel.setUsesSuggestions (true);
+        panel.loadChordSet (fourChords);
+        check ((int) get (*p, params::style) == 2, "with the preference on, the set's Style (Eighths) is taken too");
+        const auto file = ChordSetManager::userFolder().getChildFile ("User").getChildFile ("ZZ Snapshot Set.json");
+        const bool existed = file.existsAsFile();
+        const auto saved = panel.saveChordSet ("ZZ Snapshot Set");
+        ChordSetManager::Entry e;
+        check (saved.wasOk() && ChordSetManager::readFile (file, e) && e.progression == "I V vi IV", "Save as chord set writes the pattern's numerals");
+        if (! existed)
+            file.deleteFile();
+
+        set (*p, params::pattern, 1.0f);
+        editor->refreshNow();
+        check (panel.currentPattern() == 1 && names (1).isEmpty(), "the tabs follow the Pattern parameter (B, empty)");
+        set (*p, params::pattern, 0.0f);
+        editor->refreshNow();
+
+        // The preview: slot 2 (Bm) sounds while held.
+        p->pushSlotPreview (2, true);
+        std::vector<int> ons;
+        for (const auto meta : block (*p, {}))
+            if (meta.getMessage().isNoteOn())
+                ons.push_back (meta.getMessage().getNoteNumber());
+        std::sort (ons.begin(), ons.end());
+        p->pushSlotPreview (2, false);
+        int offs = 0;
+        for (const auto meta : block (*p, {}))
+            offs += meta.getMessage().isNoteOff() ? 1 : 0;
+        check (ons == std::vector<int> { 59, 62, 66 } && offs == 3, "clicking a slot plays its chord (Bm: 59 62 66) until released");
+
+        // The drag-out file is the render.
+        juce::String error;
+        const auto mid = p->writePatternExport (0, false, error);
+        juce::MemoryBlock data;
+        MidiSong song;
+        std::string why;
+        const bool read = mid.loadFileAsData (data) && readMidiFile ((const uint8_t*) data.getData(), data.getSize(), song, why);
+        const auto want = renderPattern (p->getWorkspace(), 0, p->currentSettings(), 120.0);
+        bool same = read && song.notes.size() == want.notes.size();
+        for (size_t i = 0; same && i < want.notes.size(); ++i)
+            same = song.notes[i].start == want.notes[i].start && song.notes[i].end == want.notes[i].end && song.notes[i].pitch == want.notes[i].pitch;
+        const auto chordsOnly = p->writePatternExport (0, true, error);
+        juce::MemoryBlock data2;
+        MidiSong song2;
+        const bool read2 = chordsOnly.loadFileAsData (data2) && readMidiFile ((const uint8_t*) data2.getData(), data2.getSize(), song2, why);
+        juce::String emptyError;
+        const auto none = p->writePatternExport (3, false, emptyError);
+        check (same && song.notes.size() == 4 * 8 * 3 && read2 && song2.notes.size() == 12 && mid.getFileName() == "ChordMonkey A D 4 bars.mid"
+                   && ! none.exists() && emptyError.isNotEmpty(),
+               "Drag MIDI writes the render (" + juce::String ((int) song.notes.size()) + " notes in Eighths; chords only: "
+                   + juce::String ((int) song2.notes.size()) + ") as " + mid.getFileName() + "; an empty pattern gives none");
+        mid.deleteFile();
+        chordsOnly.deleteFile();
+        editor.reset();
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -1739,6 +1869,7 @@ int main (int argc, char** argv)
     testAnalyse (fixtures, out, update);
     testWorkspace();
     testChordSetsAndPresets();
+    testWorkspacePanel();
 
     std::cout << (failures == 0 ? "\nsnapshot: all passed\n" : "\n*** snapshot: " + std::to_string (failures) + " failure(s)\n");
     return failures == 0 ? 0 : 1;

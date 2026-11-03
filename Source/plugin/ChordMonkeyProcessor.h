@@ -22,6 +22,7 @@
 #include "../core/engine/SnapshotExchange.h"
 #include "../core/midiio/ExportRecorder.h"
 #include "../core/model/Workspace.h"
+#include "../core/midiio/PatternRender.h"
 #include "Parameters.h"
 #include "PresetManager.h"
 #include "ChordSetManager.h"
@@ -92,6 +93,9 @@ namespace chordmonkey
         // the chord pads, which play their key's palette chord whatever Bind is (Phase 3).
         void pushUiNote (int note, int velocity, bool on, bool palette = false) noexcept;
 
+        // The workspace's preview (Phase 6): slot `slot` of the current pattern plays while held.
+        void pushSlotPreview (int slot, bool on) noexcept;
+
         // Key and note states for the editor (written by the audio thread each block): an
         // output note sounds; an input key is down; a key's performance plays (held or latched).
         bool isNoteSounding (int note) const noexcept { return testBit (sounding, note); }
@@ -134,6 +138,12 @@ namespace chordmonkey
         TakeInfo exportInfo() const noexcept { return recorder.info(); }
         juce::File writeExport (juce::String& error);
 
+        // A pattern's drag-out (Phase 6, PatternRender.h): one loop of pattern `pattern` rendered
+        // with the current settings at the host's last tempo and meter (120 BPM, 4/4 before it
+        // has played), as a temporary .mid; `chordsOnly` leaves the rhythm out. An invalid File
+        // (and `error`) for an empty pattern.
+        juce::File writePatternExport (int pattern, bool chordsOnly, juce::String& error);
+
         // While the Test pattern is on, each finished take is also written here (for checks in
         // Live through the bridge).
         static juce::File testTakeFile();
@@ -166,6 +176,8 @@ namespace chordmonkey
         std::atomic<int> soundingNotes { 0 };
         std::atomic<bool> transportPlaying { false };
         std::atomic<int> playingPattern { 0 }, playingSlot { -1 };   // the pattern playing and its slot sounding (-1: none)
+        std::atomic<double> hostBpm { 120.0 };                        // the host's last tempo and meter
+        std::atomic<int> hostNumerator { 4 }, hostDenominator { 4 };
         std::atomic<uint64_t> keyGuess { KeyGuess().pack() };
 
     private:
