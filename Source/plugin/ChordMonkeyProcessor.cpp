@@ -1,5 +1,6 @@
 #include "ChordMonkeyProcessor.h"
 #include "../ui/ChordMonkeyEditor.h"
+#include "../core/model/ChordSets.h"
 #include <cmath>
 
 namespace chordmonkey
@@ -173,8 +174,13 @@ namespace chordmonkey
             }
         }
 
+        if (workspaceForAudio.hasNew())
+            engine.setWorkspace (workspaceForAudio.read());
+
         output.clear();
         engine.process (settings, transport, input.begin(), input.size(), numSamples, output);
+        playingPattern.store (engine.getPlayingPattern(), std::memory_order_relaxed);
+        playingSlot.store (engine.getPlayingSlot(), std::memory_order_relaxed);
         recorder.record (transport, numSamples, output.begin(), output.size());
 
         for (const auto& e : output)
@@ -242,6 +248,12 @@ namespace chordmonkey
         if (snapshot.analyseMode() == params::AnalyseMode::UseGuess)
             applyGuess();
 
+        // The test rig's workspace, from the bridge.
+        if (snapshot.testWorkspace())
+            readTestWorkspace();
+        else
+            testWorkspaceRead = {};
+
         // The test rig's takes and guesses, for checks in Live.
         if (snapshot.engineSettings().testPattern)
         {
@@ -292,6 +304,38 @@ namespace chordmonkey
     juce::File ChordMonkeyProcessor::heardKeyFile()
     {
         return testTakeFile().getSiblingFile ("Heard key.json");
+    }
+
+    juce::File ChordMonkeyProcessor::testWorkspaceFile()
+    {
+        return testTakeFile().getSiblingFile ("Workspace.txt");
+    }
+
+    void ChordMonkeyProcessor::readTestWorkspace()
+    {
+        const auto file = testWorkspaceFile();
+        const auto modified = file.getLastModificationTime();
+        if (! file.existsAsFile() || modified == testWorkspaceRead)
+            return;
+        testWorkspaceRead = modified;
+
+        Workspace w;
+        int n = 0;
+        juce::StringArray lines;
+        file.readLines (lines);
+        for (const auto& line : lines)
+        {
+            if (line.trimStart().startsWithChar ('#'))
+                continue;
+            if (n == numPatterns)
+                break;
+            std::string error;
+            Pattern p;
+            if (parseProgression (line.toStdString(), snapshot.key(), p, error))
+                w.patterns[(size_t) n] = p;
+            ++n;
+        }
+        setWorkspace (w);
     }
 
     void ChordMonkeyProcessor::writeHeardKey()
@@ -462,6 +506,7 @@ namespace chordmonkey
             if (workspace == w)
                 return;
             workspace = w;
+            workspaceForAudio.publish (workspace);
         }
         notifyStateChanged();
     }
@@ -531,6 +576,7 @@ namespace chordmonkey
         {
             const juce::ScopedLock sl (workspaceLock);
             workspace = workspaceFromTree (ws);
+            workspaceForAudio.publish (workspace);
         }
         tree.removeChild (ws, nullptr);
         dropNonFiniteValues (tree);

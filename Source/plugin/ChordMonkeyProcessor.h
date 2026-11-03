@@ -100,8 +100,9 @@ namespace chordmonkey
         juce::ValueTree uiState { "UI" };
 
         // The workspace (PLAN.md §3.2): four patterns of chords. Not parameters; saved with the
-        // state. Any thread except the audio thread (a lock; Phase 2 hands the audio thread a
-        // copy). A change the host should save marks the state changed.
+        // state. Any thread except the audio thread (a lock); the audio thread gets each new
+        // workspace through a SnapshotExchange. A change the host should save marks the state
+        // changed.
         Workspace getWorkspace() const;
         void setWorkspace (const Workspace&);
 
@@ -135,10 +136,17 @@ namespace chordmonkey
         // bridge's checks in Live).
         static juce::File heardKeyFile();
 
+        // While Test workspace is on, the workspace is loaded from this file whenever it changes
+        // (Phase 2, for the bridge's checks in Live): line n is pattern n (A-D) as a progression
+        // (ChordSets.h), in the current Key; a blank or unreadable line is an empty pattern, and
+        // lines starting with # are skipped.
+        static juce::File testWorkspaceFile();
+
         // Status for the editor and tests (written by the audio thread).
         std::atomic<int> lastChordSlot { -1 };
         std::atomic<int> soundingNotes { 0 };
         std::atomic<bool> transportPlaying { false };
+        std::atomic<int> playingPattern { 0 }, playingSlot { -1 };   // the pattern playing and its slot sounding (-1: none)
         std::atomic<uint64_t> keyGuess { KeyGuess().pack() };
 
     private:
@@ -183,9 +191,12 @@ namespace chordmonkey
         uint64_t heardKeyWritten = 0;
         int heardModeWritten = -1;
         void writeHeardKey();
+        void readTestWorkspace();
+        juce::Time testWorkspaceRead;
         juce::String presetName { "Init" }, presetCategory { "Init" };
         mutable juce::CriticalSection workspaceLock;
         Workspace workspace;
+        SnapshotExchange<Workspace> workspaceForAudio;   // written under workspaceLock
         static juce::ValueTree workspaceToTree (const Workspace&);
         static Workspace workspaceFromTree (const juce::ValueTree&);
         std::atomic<int> currentProgram { 0 }, pendingProgram { -1 };

@@ -6,7 +6,8 @@
 //                 large one (1200×800), each compared with Tests/fixtures/snapshot/*.png (at most
 //                 0.5% of pixels may differ by more than 24 levels: font rendering moves a little
 //                 between macOS versions); clicking a chord pad plays its chord
-//   2. reachable  every host parameter but the test rig is bound to a control of the editor
+//   2. reachable  every host parameter but the test rig (Test pattern, Test workspace) is bound
+//                 to a control of the editor
 //                 (going through the four sequencer patterns, as a user would)
 //   3. state      a saved state restores every parameter and the UI's preferences into a new
 //                 instance
@@ -30,7 +31,9 @@
 //                 listening; the editor-heard snapshot
 //   7. workspace  (PLAN.md Phase 1) the workspace round-trips through the state, stays out of
 //                 the parameters, restores empty from an older state, survives a damaged
-//                 pattern, and an edit tells the host
+//                 pattern, and an edit tells the host; the test rig's Workspace.txt loads while
+//                 Test workspace is on; a workspace set on the message thread plays (Play,
+//                 Pattern) in processBlock with no allocation (Phase 2)
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -1206,6 +1209,70 @@ namespace
             const auto got = q->getWorkspace();
             check (got.patterns[0] == Pattern {} && got.patterns[2] == w.patterns[2], "a damaged pattern restores empty; the others are kept");
         }
+
+        std::cout << "== workspace: test rig and playback (Phase 2) ==\n";
+        {
+            const auto file = ChordMonkeyProcessor::testWorkspaceFile();
+            const bool hadFile = file.existsAsFile();
+            const auto previous = hadFile ? file.loadFileAsString() : juce::String();
+            file.getParentDirectory().createDirectory();
+            file.replaceWithText ("# the bridge's patterns\nI V vi IV\n\nii7:2 V7:2 oops\nvi:8\n");
+
+            auto q = std::make_unique<ChordMonkeyProcessor>();
+            set (*q, params::key, 2.0f);
+            runTimers (150);
+            const bool ignoredWhileOff = q->getWorkspace() == Workspace {};
+            set (*q, params::testWorkspace, 1.0f);
+            runTimers (150);
+            Workspace want;
+            std::string error;
+            parseProgression ("I V vi IV", 2, want.patterns[0], error);
+            parseProgression ("vi:8", 2, want.patterns[3], error);
+            check (ignoredWhileOff && q->getWorkspace() == want,
+                   "Workspace.txt loads only while Test workspace is on: in D, a comment skipped, a blank and a bad line empty");
+            check (! params::isPresetParameter (params::testWorkspace) && ! params::isPresetParameter (params::play)
+                       && ! params::isPresetParameter (params::pattern),
+                   "Play, Pattern and Test workspace aren't preset parameters");
+
+            if (hadFile)
+                file.replaceWithText (previous);
+            else
+                file.deleteFile();
+
+            // Playback: the message thread sets the workspace; the next block plays it.
+            q->prepareToPlay (48000.0, 512);
+            LoopPlayHead head;
+            head.looping = false;
+            head.bpm = 120.0;
+            q->setPlayHead (&head);
+            set (*q, params::testWorkspace, 0.0f);
+            Workspace w;
+            parseProgression ("I:2 V:2", 0, w.patterns[1], error);
+            q->setWorkspace (w);
+            set (*q, params::pattern, 1.0f);
+            set (*q, params::play, 1.0f);
+            std::vector<int> ons;
+            const auto before = allocCount.load();
+            juce::AudioBuffer<float> buffer (2, 512);
+            juce::MidiBuffer midi;
+            midi.ensureSize (1 << 16);    // a host that reserves enough for any block
+            for (int b = 0; b < 200; ++b)   // 200 blocks of 512 at 48 kHz, 120 BPM: 4.27 beats
+            {
+                midi.clear();
+                {
+                    AllocWatch watch;
+                    q->processBlock (buffer, midi);
+                }
+                head.advance (512, 48000.0);
+                for (const auto m : midi)
+                    if (m.getMessage().isNoteOn())
+                        ons.push_back (m.getMessage().getNoteNumber());
+            }
+            q->setPlayHead (nullptr);
+            check (ons == std::vector<int> { 48, 52, 55, 55, 59, 62, 48, 52, 55 } && q->playingPattern.load() == 1 && q->playingSlot.load() == 0,
+                   "Play with Pattern B plays its C and G, two beats each, and C again (" + juce::String ((int) ons.size()) + " note-ons)");
+            check (allocCount.load() == before, "no allocation in processBlock while the pattern plays");
+        }
     }
 }
 
@@ -1308,7 +1375,8 @@ int main (int argc, char** argv)
             if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (param))
             {
                 ++total;
-                if (editor->boundParameters().count (withId->paramID) == 0 && withId->paramID != params::testPattern)
+                if (editor->boundParameters().count (withId->paramID) == 0 && withId->paramID != params::testPattern
+                    && withId->paramID != params::testWorkspace)
                     missing.add (withId->paramID);
             }
         check (total == params::numParameters && missing.isEmpty(), juce::String (total) + " parameters, " + juce::String (missing.size()) + " without a control (Test pattern is Live's)"

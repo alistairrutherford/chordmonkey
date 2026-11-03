@@ -54,18 +54,29 @@ namespace chordmonkey::params
     inline constexpr const char* analyse       = "analyse";
     enum class AnalyseMode { Off, Listen, UseGuess };
 
+    // Pattern playback (appended; PLAN.md §3.2, Phase 2): Play (the current pattern plays in
+    // time while the host plays) and Pattern (A-D; a switch while playing waits for the bar).
+    // Not in presets yet: presets don't hold the workspace until Phase 5.
+    inline constexpr const char* play          = "play";
+    inline constexpr const char* pattern       = "pattern";
+
+    // Test rig (appended, Phase 2): while on, the processor loads the workspace from the test
+    // rig's Workspace.txt whenever it changes (ChordMonkeyProcessor::testWorkspaceFile), so the
+    // bridge can give it patterns in Live. Not in presets; no control.
+    inline constexpr const char* testWorkspace = "testWorkspace";
+
     // ChordChimp Phase 1 (2026-10-25) removed Chordism's Split, Mute CG / SS, the shifters and
     // Test shifter, every Smart Scale and pattern parameter, Test smart, Sync group and
     // Look-ahead; Phase 2 its Custom 1-7, Strum time, Seq sustain and the four step patterns
     // (ChordChimp's PLAN.md §3.5). A saved state's or preset's values for them are ignored.
-    constexpr int numParameters = 28;
+    constexpr int numParameters = 31;
 
     // A Chordism preset's tree, made ChordMonkey's: the Progression value becomes a choice
     // (Chordism's Custom: Diatonic). The other kept values mean the same.
     void fromChordism (juce::ValueTree& tree);
 
-    // Parameters a preset doesn't touch: Enable, Key octave, Analyse and the test rig
-    // (PresetManager).
+    // Parameters a preset doesn't touch: Enable, Key octave, Analyse, Play, Pattern and the
+    // test rig (Test pattern, Test workspace) (PresetManager).
     bool isPresetParameter (const juce::String& paramId);
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -82,6 +93,7 @@ namespace chordmonkey::params
         Scale currentScale() const noexcept;
         ChordFxSettings chordFx() const noexcept;
         AnalyseMode analyseMode() const noexcept;
+        bool testWorkspace() const noexcept;
 
     private:
         std::atomic<float>* enable;
@@ -93,6 +105,9 @@ namespace chordmonkey::params
         std::atomic<float>* progression;
         std::atomic<float>* keyOctaveParam;
         std::atomic<float>* analyseParam;
+        std::atomic<float>* playParam;
+        std::atomic<float>* patternParam;
+        std::atomic<float>* testWorkspaceParam;
 
         std::atomic<float>* fxStack;
         std::atomic<float>* fxStrum;

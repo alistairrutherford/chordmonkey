@@ -13,7 +13,11 @@
 // forgotten when the transport starts and when everything ends, so a take from the top always
 // voices the same.
 //
-// Each chord key that goes down starts a *performance* (one per key, so 128). A performance
+// Pattern playback (PLAN.md §3.2, Phase 2): chord slots 12-19 are the playing pattern's eight
+// slots, whose notes the engine computes (PatternChords); performance 128 (patternKey) plays
+// them, pressed and ended by the PatternPlayer's triggers. The key octave never moves it.
+//
+// Each chord key that goes down starts a *performance* (one per key, so 128, and the pattern's). A performance
 // plays its chord in strikes: one strike for as long as the chord is held, or a strike per
 // Repeat step and/or per open Step Sequencer window. A strike starts all the tones at once, or
 // one after another with Strum, and ends them together. With Arp the performance plays one tone
@@ -39,6 +43,7 @@
 #include "../theory/ChordModel.h"
 #include "../theory/ChordGroups.h"
 #include "../theory/VoiceLeading.h"
+#include "../model/Workspace.h"
 #include "Arp.h"
 #include "Clock.h"
 #include "EventQueue.h"
@@ -57,6 +62,13 @@
 
 namespace chordmonkey
 {
+    // The chord slots a performance can play: the palette's twelve, then the pattern's eight.
+    constexpr int numPerformSlots = numChordSlots + numPatternSlots;
+    using SlotFlags = std::array<bool, numPerformSlots>;
+
+    // The notes of the playing pattern's slots (inversion, octave and Chord Octave applied).
+    using PatternChords = std::array<ChordNotes, numPatternSlots>;
+
     struct ChordFxSettings
     {
         StackMode stack = StackMode::Off;
@@ -85,7 +97,8 @@ namespace chordmonkey
     class ChordPerformer
     {
     public:
-        static constexpr int numPerformances = 128;
+        static constexpr int numPerformances = 129;
+        static constexpr int patternKey = 128;    // the pattern's performance (Phase 2)
         static constexpr int firstSource = 128;   // sources 0..127 are input keys
 
         static VoiceTracker::Source sourceOf (int key, int which) noexcept
@@ -98,8 +111,9 @@ namespace chordmonkey
         // Ties at one sample: note-offs, then input (key presses and releases), then note-ons.
         static constexpr uint8_t endOrder = 0, inputOrder = 1, startOrder = 2;
 
-        ChordPerformer (VoiceTracker& v, Clock& c, const ChordSet& chordSet, const ChordContext& ctx) noexcept
-            : voices (v), clock (c), chords (chordSet), context (ctx) {}
+        ChordPerformer (VoiceTracker& v, Clock& c, const ChordSet& chordSet, const PatternChords& patternChordSet,
+                        const ChordContext& ctx) noexcept
+            : voices (v), clock (c), chords (chordSet), patternChords (patternChordSet), context (ctx) {}
 
         VoiceTracker::Source source (int key, int which) const noexcept { return sourceOf (key, which); }
 
@@ -126,7 +140,7 @@ namespace chordmonkey
         // effect when the chords are next retuned (ChordEngine marks every slot changed).
         void setFollowKeyOctave (bool follow) noexcept { followKeyOctave = follow; }
 
-        void applySettings (const ChordFxSettings& s, int channel, const std::array<bool, numChordSlots>& changed,
+        void applySettings (const ChordFxSettings& s, int channel, const SlotFlags& changed,
                             int sample, BlockEvents& o) noexcept
         {
             out = &o;
@@ -169,12 +183,12 @@ namespace chordmonkey
                     return;
             }
 
-            std::array<bool, numChordSlots> slots = changed;
+            SlotFlags slots = changed;
             if (old.stack != s.stack || old.voiceLeading != s.voiceLeading)
                 slots.fill (true);
             retuneWhere ([&] (int k, const Perf& p) noexcept
             {
-                return ! restart[(size_t) k] && p.slot >= 0 && p.slot < numChordSlots && slots[(size_t) p.slot];
+                return ! restart[(size_t) k] && p.slot >= 0 && p.slot < numPerformSlots && slots[(size_t) p.slot];
             }, sample);
         }
 
@@ -290,12 +304,12 @@ namespace chordmonkey
         // The chords changed (parameters): every performance whose slot is marked and whose
         // tones changed plays the new tones. A sounding strike is restruck at `sample` (all
         // releases first, so a shared pitch restrikes); an arp takes the new tones at its next step.
-        void retune (const std::array<bool, numChordSlots>& changed, int sample, BlockEvents& o) noexcept
+        void retune (const SlotFlags& changed, int sample, BlockEvents& o) noexcept
         {
             out = &o;
             retuneWhere ([&] (int, const Perf& p) noexcept
             {
-                return p.slot >= 0 && p.slot < numChordSlots && changed[(size_t) p.slot];
+                return p.slot >= 0 && p.slot < numPerformSlots && changed[(size_t) p.slot];
             }, sample);
         }
 
@@ -398,15 +412,16 @@ namespace chordmonkey
         // before Stack and the key octave (led from the last chord with Smooth voice leading).
         VoicedNotes voiced (int key, int slot, ChordNotes* base = nullptr) const noexcept
         {
-            if (slot < 0 || slot >= numChordSlots)
+            if (slot < 0 || slot >= numPerformSlots)
                 return {};
-            ChordNotes notes = chordNotes (chords[(size_t) slot], context);
+            ChordNotes notes = slot < numChordSlots ? chordNotes (chords[(size_t) slot], context)
+                                                    : patternChords[(size_t) (slot - numChordSlots)];
             if (fx.voiceLeading == VoiceLeadingMode::Smooth)
                 notes = leadVoicing (notes, haveLed ? &led : nullptr, context);
             if (base != nullptr)
                 *base = notes;
             const VoicedNotes stacked = stackNotes (notes, fx.stack);
-            const int shift = followKeyOctave ? 12 * (key / 12 - KeyRouter::homeC / 12) : 0;
+            const int shift = followKeyOctave && key != patternKey ? 12 * (key / 12 - KeyRouter::homeC / 12) : 0;
             if (shift == 0)
                 return stacked;
             VoicedNotes moved;
@@ -421,7 +436,7 @@ namespace chordmonkey
         {
             ChordNotes base;
             const VoicedNotes v = voiced (key, slot, &base);
-            if (slot >= 0 && slot < numChordSlots)
+            if (slot >= 0 && slot < numPerformSlots)
             {
                 led = base;
                 haveLed = true;
@@ -718,6 +733,7 @@ namespace chordmonkey
         VoiceTracker& voices;
         Clock& clock;
         const ChordSet& chords;
+        const PatternChords& patternChords;
         const ChordContext& context;
 
         ChordFxSettings fx;

@@ -1,7 +1,8 @@
 // The editor's panels (ChordChimp's PLAN.md §5):
 //
-//   TopBar         the name · On · the preset browser · Export (drag out the last bars played) ·
-//                  Keys (show or hide the output keyboard)
+//   TopBar         the name · On · the preset browser · Pattern (A-D) · Play · Export (drag out
+//                  the last bars played) · Keys (show or hide the output keyboard). Pattern and
+//                  Play sit here until the workspace gets its own panel (PLAN.md Phase 6)
 //   GlobalRow      Key · Heard · Scale · Chord Group · Progression · Octave · Key octave
 //   HeardKey       the Heard box (ChordChimp's docs/KEY_DETECTION_PLAN.md K5): Analyse, then the key heard;
 //                  a click on the guess sets Key (and Scale) to it, ✕ stops analysing
@@ -30,7 +31,7 @@ namespace chordmonkey::ui
         ExportHandle exportHandle;
 
     private:
-        ParamControl enable;
+        ParamControl enable, pattern, play;
         juce::TextButton keyboardButton { "Keys" };
         juce::Rectangle<int> nameArea;
     };

@@ -5,11 +5,13 @@ Scaler 2: a scale's chords, chord sets, patterns of chords that play in time wit
 Keys-Lock, and drag-out to MIDI clips. It's a fork of [ChordChimp](../chordchimp). The plan and
 status are in [PLAN.md](PLAN.md).
 
-**Status:** Phases 0-1 done: the fork (checked in Live 12.4.16 next to ChordChimp) and the
-workspace model (patterns of chords, chord sets as Roman numerals, saved with the set; nothing
-plays or shows it yet). ChordMonkey currently plays exactly like ChordChimp:
+**Status:** Phases 0-2 done: the fork (checked in Live 12.4.16 next to ChordChimp), the
+workspace model (patterns of chords, chord sets as Roman numerals, saved with the set) and
+pattern playback (**Play** and **Pattern** in the top bar: the pattern plays in time with Live,
+through the effects). There's no way to edit the workspace in the editor yet (Phase 6). The keys
+still play exactly like ChordChimp:
 every white key plays its chord, the black keys borrowed chords, with ChordChimp's effects,
-presets, Analyse and Export. The Scaler-style features come in Phases 1–9.
+presets, Analyse and Export. The rest of the Scaler-style features come in Phases 3–9.
 
 ## Install
 

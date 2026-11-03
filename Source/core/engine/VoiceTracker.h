@@ -19,8 +19,9 @@ namespace chordmonkey
     {
     public:
         using Source = uint16_t;
-        // 0..127 input keys, 128..383 chord performances (ChordFx.h): two per key.
-        static constexpr int maxSources = 384;
+        // 0..127 input keys, 128..385 chord performances (ChordFx.h): two per key, and two for
+        // the pattern (Phase 2).
+        static constexpr int maxSources = 386;
         static constexpr int maxNotesPerSource = 64;
 
         // Starts `note` for `source`. A source that already owns the pitch keeps it (no second
