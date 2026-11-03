@@ -87,9 +87,13 @@ Pattern A  [ C    | Am   | F    | G    |      |      |      |      ]  ← 8 slot
 Pattern B  [ Dm7  | G7   | Cmaj7| ...                              ]
 ```
 
-- A **slot** holds an absolute chord: root pitch class, chord type (Chordism's `ChordTypes`
-  table, brought back), **length** (½–8 beats, default 4), **inversion** (root, 1st, 2nd, 3rd),
-  **octave** (−2…+2). An empty slot ends the pattern.
+- A **slot** holds an absolute chord: a root pitch class and the chord's **tones** in semitones
+  above it (up to 8, placed above C2), **length** (½–8 beats, default 4), **inversion** (root,
+  1st, 2nd, 3rd: each moves the lowest note up an octave), **octave** (−2…+2). An empty slot
+  ends the pattern. *As built (Phase 1):* tones rather than a chord-type index, so any palette
+  chord (every Chord Group, scale and borrowed chord: 31,824 cases tested) copies in with exactly
+  its notes; `ChordTypes` (Chordism's table) names the shapes for chord sets and menus. Each
+  pattern also keeps the key it was written in, for Transpose to key.
 - Chords are stored **absolute**, so changing Key doesn't rewrite a pattern (as in Scaler). A
   **Transpose to key** action moves a pattern to the current Key; loading a chord set writes it
   in the current Key.
@@ -159,6 +163,11 @@ slot → chord → inversion/octave → **Voicing** → voice leading → Stack 
 
 - **Chord sets** are progressions stored as numerals plus lengths, e.g. `I:4 V:4 vi:4 IV:4`, with a
   suggested scale and style. Loading one writes it into the current pattern in the current Key.
+  *As built (Phase 1, `core/model/ChordSets.h`):* numerals count by the major scale's degrees
+  with `b`/`#` for the rest (`i bVI bIII bVII`), so a set works in any key and scale; case gives
+  the 3rd, the suffix the type (`V7`, `IVmaj7`, `ii7`, `viiø7`, `vii°7`, `IVsus4`, `bVII9`); a
+  length is beats after `:` (default 4, halves allowed); a shape no type names keeps its tones,
+  `V(0.7.16)`. Every chord writes a numeral that reads back as the same chord.
   About 40 factory sets in 6 categories: Pop, Rock, Jazz & Soul, EDM & House, Cinematic, Moods
   (Happy, Sad, Dreamy, Dark, …). All are common-practice progressions, written by us.
 - **User chord sets:** *Save pattern as chord set* writes `~/Music/ChordMonkey/ChordSets/User/<Name>.json`
@@ -219,10 +228,10 @@ run without a host.
 | Module | From | Notes |
 |---|---|---|
 | `core/theory`: `Scales`, `ChordModel`, `ChordGroups`, `VoiceLeading`, `ChordNamer`, `RomanNumeral`, `KeyProfiles` | ChordChimp | As is |
-| `core/theory/ChordTypes.h` | Chordism | Brought back: absolute chord types for slots |
+| `core/theory/ChordTypes.h` | Chordism | Brought back (Phase 1): the table, with each type's numeral suffix and tones; no step editing |
 | `core/theory/ChordRecognizer.h` | Chordism `ChordImporter` | The recognition part only |
 | `core/theory/Voicings.h`, `Substitutes.h` | **New** | Drop-2/spread/wide; substitute lists |
-| `core/model/Workspace.h`, `ChordSet.h` | **New** | Patterns, slots, numerals ↔ absolute, JSON/XML |
+| `core/model/Workspace.h`, `ChordSets.h` | **New** (Phase 1) | Patterns, slots, editing, transposing, the saved text; numerals ↔ chords, slot names (`ChordSets`, plural: `ChordSet` is ChordGroups.h's 12 palette slots) |
 | `core/engine/PatternPlayer.h` | **New** | Slot timeline from beat position; loops; jumps; pattern switch at the bar |
 | `core/engine/KeyRouter.h` | ChordChimp, rewritten | Bind / Lock / pass zones |
 | `core/engine/KeysLock.h`, `Style.h`, `Humanize.h`, `ChordListener.h` | **New** | |
@@ -375,7 +384,8 @@ Inherited from ChordChimp, plus the new parts:
 | Phase | Status | Detail |
 |---|---|---|
 | 0. Fork and identity | **Done (2026-11-03)** | Copied from ChordChimp at `e3e349a` (its tracked `Source/`, `Tests/`, `Tools/`, CI and `.jucer`s; not its plan, README, docs or generated Xcode projects). Renamed: namespace `chordmonkey`, `ChordMonkeyProcessor`, `ChordMonkeyEditor`, the snapshot app, bundle ID `com.alistairrutherford.chordmonkey`, plug-in code `Cmky` (so its VST3 class IDs differ from ChordChimp's), presets in `~/Music/ChordMonkey/Presets`, description *"Chords from a scale, arranged into patterns"*. Comments citing ChordChimp's plan now say so (§4.1). `PresetManager::readFile` also reads ChordChimp preset files (root tag `ChordChimp`), as well as Chordism's. Checks: `Tests/run_tests.sh` all passed; `Tests/run_snapshot.sh` all passed (reference images updated for the new name); `Tools/install.sh --validate` built Release (universal), installed `ChordMonkey.vst3` and `ChordMonkey.app` next to ChordChimp and Chordism, and `pluginval` strictness 10 passed. **In Live** (12.4.16, set `~/Music/Ableton/Projects/ChordMonkey Phase 0 Project`, by the Ableton MCP alone): Live lists ChordMonkey and ChordChimp separately (VST3 › Alistair Rutherford); ChordMonkey shows 28 parameters + Program + Device On = 30, as ChordChimp. Each loaded on its own MIDI track feeding a Drift track through *MIDI From: <track> → <plug-in>*. **Test-pattern take (Init):** about 20 beats from each, identical note for note, 63 notes: C-major triads, slot = beat mod 7, every note on the beat and an eighth long. Meters at 0 after the stop. **Bridge notes:** `start_recording`'s `length_beats` didn't stop the take (stopped by hand), and Live counts in first. **Not checked:** the editor in Live, set save/reopen (unchanged code from ChordChimp, checked there in its Phase 5). |
-| 1–10 | Not started | |
+| 1. Workspace model | **Done (2026-11-03)** | `ChordTypes.h` (Chordism's 27 types, plus each one's numeral suffix and case); `core/model/Workspace.h` (`WorkspaceChord` = root + tones, `PatternSlot`, `Pattern` with set/insert/remove/move/clear/transpose/transposeToKey, `Workspace`, `slotNotes` with inversion and octave, `chordFromSlot` from the palette, `patternToText`/`patternFromText`); `core/model/ChordSets.h` (`parseNumeral`, `numeralFor`, `parseProgression`, `formatProgression`, `namePatternSlot`). The processor holds the workspace (`getWorkspace`/`setWorkspace`, behind a lock; not on the audio thread yet) and saves it in its state as `<WORKSPACE><PATTERN index text/>…`; a state without one restores empty; an edit tells the host. Checks: `Tests/test_workspace.cpp` (new in `run_tests.sh`): the type table; all 31,824 palette chords (12 keys × 13 scales × 17 groups × 12 slots) play the same notes from the workspace with the same root; inversions, octaves, clamping; names (C/E, Am7, C#m7b5, Eb); transposing (B2 up 1 is C3; 80 moves stay in C1-B3; C→G→C exact); editing; the saved text, its documented form, damaged text, 2,000 random patterns; 23 numerals by hand, 10 bad tokens refused with a reason, 3,888 typed chords and 2,000 random chords round-trip as numerals; palette rows as numerals (C major triads, E major sevenths, A minor triads, the borrowed chords); progressions. Snapshot app, new section 7: the workspace round-trips through the state, stays out of the parameters, restores empty from an older state, a damaged pattern doesn't spoil the others, an edit (not a repeat) notifies the host. All core and snapshot tests passed; `Tools/install.sh --validate` built, installed and passed `pluginval` 10. Not in Live: nothing there uses the workspace until Phase 2. |
+| 2–10 | Not started | |
 
 ---
 

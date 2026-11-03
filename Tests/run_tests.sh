@@ -40,6 +40,7 @@ compile_and_run test_fx
 compile_and_run test_edge
 compile_and_run test_export
 compile_and_run test_keys
+compile_and_run test_workspace
 
 echo ""
 echo "All test binaries passed."

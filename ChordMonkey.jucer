@@ -20,6 +20,7 @@
         <FILE id="csF021" name="ChordNamer.h" compile="0" resource="0" file="Source/core/theory/ChordNamer.h"/>
         <FILE id="csF022" name="RomanNumeral.h" compile="0" resource="0" file="Source/core/theory/RomanNumeral.h"/>
         <FILE id="csF062" name="VoiceLeading.h" compile="0" resource="0" file="Source/core/theory/VoiceLeading.h"/>
+        <FILE id="cmF001" name="ChordTypes.h" compile="0" resource="0" file="Source/core/theory/ChordTypes.h"/>
       </GROUP>
       <GROUP id="csGrp1" name="core/engine">
         <FILE id="ccF101" name="ChordEngine.h" compile="0" resource="0" file="Source/core/engine/ChordEngine.h"/>
@@ -41,6 +42,10 @@
         <FILE id="csF035" name="VelocityAlgorithm.h" compile="0" resource="0" file="Source/core/engine/VelocityAlgorithm.h"/>
         <FILE id="csF036" name="Hold.h" compile="0" resource="0" file="Source/core/engine/Hold.h"/>
         <FILE id="csF037" name="ChordFx.h" compile="0" resource="0" file="Source/core/engine/ChordFx.h"/>
+      </GROUP>
+      <GROUP id="cmGrp1" name="core/model">
+        <FILE id="cmF002" name="Workspace.h" compile="0" resource="0" file="Source/core/model/Workspace.h"/>
+        <FILE id="cmF003" name="ChordSets.h" compile="0" resource="0" file="Source/core/model/ChordSets.h"/>
       </GROUP>
       <GROUP id="csGrp4" name="core/midiio">
         <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>

@@ -21,6 +21,7 @@
 #include "../core/engine/ChordEngine.h"
 #include "../core/engine/SnapshotExchange.h"
 #include "../core/midiio/ExportRecorder.h"
+#include "../core/model/Workspace.h"
 #include "Parameters.h"
 #include "PresetManager.h"
 #include <atomic>
@@ -97,6 +98,12 @@ namespace chordmonkey
 
         // Editor preferences saved with the plug-in (page shown, keyboard shown). Message thread.
         juce::ValueTree uiState { "UI" };
+
+        // The workspace (PLAN.md §3.2): four patterns of chords. Not parameters; saved with the
+        // state. Any thread except the audio thread (a lock; Phase 2 hands the audio thread a
+        // copy). A change the host should save marks the state changed.
+        Workspace getWorkspace() const;
+        void setWorkspace (const Workspace&);
 
         //==========================================================================
         // Presets (message thread). applyPreset sets every preset parameter (the preset's value,
@@ -177,6 +184,10 @@ namespace chordmonkey
         int heardModeWritten = -1;
         void writeHeardKey();
         juce::String presetName { "Init" }, presetCategory { "Init" };
+        mutable juce::CriticalSection workspaceLock;
+        Workspace workspace;
+        static juce::ValueTree workspaceToTree (const Workspace&);
+        static Workspace workspaceFromTree (const juce::ValueTree&);
         std::atomic<int> currentProgram { 0 }, pendingProgram { -1 };
         void loadProgram (int index);
 

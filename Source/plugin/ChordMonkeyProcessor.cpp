@@ -443,11 +443,62 @@ namespace chordmonkey
         return new ChordMonkeyEditor (*this);
     }
 
+    //==========================================================================
+    // The workspace (PLAN.md §3.2), saved as one PATTERN child per pattern with its text
+    // (patternToText):
+    //
+    //   <WORKSPACE version="1"><PATTERN index="0" text="0|0:0.4.7:8:0:0 …"/> … </WORKSPACE>
+
+    Workspace ChordMonkeyProcessor::getWorkspace() const
+    {
+        const juce::ScopedLock sl (workspaceLock);
+        return workspace;
+    }
+
+    void ChordMonkeyProcessor::setWorkspace (const Workspace& w)
+    {
+        {
+            const juce::ScopedLock sl (workspaceLock);
+            if (workspace == w)
+                return;
+            workspace = w;
+        }
+        notifyStateChanged();
+    }
+
+    juce::ValueTree ChordMonkeyProcessor::workspaceToTree (const Workspace& w)
+    {
+        juce::ValueTree tree ("WORKSPACE");
+        tree.setProperty ("version", 1, nullptr);
+        for (int i = 0; i < numPatterns; ++i)
+        {
+            juce::ValueTree p ("PATTERN");
+            p.setProperty ("index", i, nullptr);
+            p.setProperty ("text", juce::String (patternToText (w.patterns[(size_t) i])), nullptr);
+            tree.appendChild (p, nullptr);
+        }
+        return tree;
+    }
+
+    // Patterns missing or unreadable come back empty.
+    Workspace ChordMonkeyProcessor::workspaceFromTree (const juce::ValueTree& tree)
+    {
+        Workspace w;
+        for (const auto& p : tree)
+        {
+            const int i = (int) p.getProperty ("index", -1);
+            if (p.hasType ("PATTERN") && i >= 0 && i < numPatterns)
+                patternFromText (p.getProperty ("text").toString().toStdString(), w.patterns[(size_t) i]);
+        }
+        return w;
+    }
+
     void ChordMonkeyProcessor::getStateInformation (juce::MemoryBlock& destData)
     {
         auto tree = state.copyState();
         dropAnalyse (tree);
         tree.appendChild (uiState.createCopy(), nullptr);
+        tree.appendChild (workspaceToTree (getWorkspace()), nullptr);
         tree.setProperty ("program", currentProgram.load(), nullptr);
         tree.setProperty ("presetName", presetName, nullptr);
         tree.setProperty ("presetCategory", presetCategory, nullptr);
@@ -474,6 +525,14 @@ namespace chordmonkey
             tree.removeChild (ui, nullptr);
         }
         restoringState = false;
+
+        // A state saved before Phase 1 has no workspace: it restores empty.
+        const auto ws = tree.getChildWithName ("WORKSPACE");
+        {
+            const juce::ScopedLock sl (workspaceLock);
+            workspace = workspaceFromTree (ws);
+        }
+        tree.removeChild (ws, nullptr);
         dropNonFiniteValues (tree);
         dropAnalyse (tree);
 

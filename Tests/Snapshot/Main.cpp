@@ -28,6 +28,9 @@
 //                 Use guess, seen by the timer); the test rig's Heard key.json; Analyse isn't
 //                 saved or in presets; the globals fit at every size; no allocation while
 //                 listening; the editor-heard snapshot
+//   7. workspace  (PLAN.md Phase 1) the workspace round-trips through the state, stays out of
+//                 the parameters, restores empty from an older state, survives a damaged
+//                 pattern, and an edit tells the host
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -41,6 +44,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "../../Source/plugin/ChordMonkeyProcessor.h"
 #include "../../Source/ui/ChordMonkeyEditor.h"
+#include "../../Source/core/model/ChordSets.h"
 #include <chrono>
 #include <iostream>
 #include <pthread.h>
@@ -1140,6 +1144,71 @@ namespace
     }
 }
 
+namespace
+{
+    // The workspace in the plug-in's state (PLAN.md §3.2, Phase 1): it round-trips, it isn't
+    // in the parameters' tree, an older state restores an empty one, a damaged pattern doesn't
+    // spoil the rest, and an edit tells the host the state changed.
+    void testWorkspace()
+    {
+        std::cout << "== workspace in the state ==\n";
+        auto p = std::make_unique<ChordMonkeyProcessor>();
+        check (p->getWorkspace() == Workspace {}, "a new instance has an empty workspace");
+
+        Workspace w;
+        std::string error;
+        parseProgression ("I V vi IV", 0, w.patterns[0], error);
+        parseProgression ("ii7:2 V7:2 Imaj7:8 bVII(0.7.16)", 9, w.patterns[2], error);
+        w.patterns[0].slots[1].inversion = 1;
+        w.patterns[2].slots[3].octave = -1;
+
+        StateWatch watch;
+        p->addListener (&watch);
+        p->setWorkspace (w);
+        const bool told = watch.changed;
+        watch.changed = false;
+        p->setWorkspace (w);
+        check (told && ! watch.changed, "an edit tells the host the state changed; setting the same workspace doesn't");
+        p->removeListener (&watch);
+
+        set (*p, params::key, 9.0f);
+        juce::MemoryBlock saved;
+        p->getStateInformation (saved);
+        auto restored = std::make_unique<ChordMonkeyProcessor>();
+        restored->setStateInformation (saved.getData(), (int) saved.getSize());
+        check (restored->getWorkspace() == w && (int) get (*restored, params::key) == 9, "the workspace and the parameters restore into a new instance");
+        check (! restored->state.state.getChildWithName ("WORKSPACE").isValid(), "the workspace stays out of the parameters' tree");
+
+        const auto xml = juce::AudioProcessor::getXmlFromBinary (saved.getData(), (int) saved.getSize());
+        const auto ws = xml != nullptr ? xml->getChildByName ("WORKSPACE") : nullptr;
+        check (ws != nullptr && ws->getNumChildElements() == numPatterns
+                   && ws->getChildElement (0)->getStringAttribute ("text") == "0|0:0.4.7:8:0:0 7:0.4.7:8:1:0 9:0.3.7:8:0:0 5:0.4.7:8:0:0",
+               "saved as one PATTERN per pattern with its text");
+
+        // A state from before Phase 1: no WORKSPACE.
+        if (xml != nullptr)
+        {
+            auto old = std::make_unique<juce::XmlElement> (*xml);
+            old->removeChildElement (old->getChildByName ("WORKSPACE"), true);
+            juce::MemoryBlock oldState;
+            juce::AudioProcessor::copyXmlToBinary (*old, oldState);
+            auto q = std::make_unique<ChordMonkeyProcessor>();
+            q->setWorkspace (w);
+            q->setStateInformation (oldState.getData(), (int) oldState.getSize());
+            check (q->getWorkspace() == Workspace {} && (int) get (*q, params::key) == 9, "an older state (no workspace) restores an empty one, and its parameters");
+
+            // One pattern damaged.
+            auto damaged = std::make_unique<juce::XmlElement> (*xml);
+            damaged->getChildByName ("WORKSPACE")->getChildElement (0)->setAttribute ("text", "garbage");
+            juce::MemoryBlock damagedState;
+            juce::AudioProcessor::copyXmlToBinary (*damaged, damagedState);
+            q->setStateInformation (damagedState.getData(), (int) damagedState.getSize());
+            const auto got = q->getWorkspace();
+            check (got.patterns[0] == Pattern {} && got.patterns[2] == w.patterns[2], "a damaged pattern restores empty; the others are kept");
+        }
+    }
+}
+
 int main (int argc, char** argv)
 {
     juce::ScopedJuceInitialiser_GUI gui;
@@ -1357,6 +1426,7 @@ int main (int argc, char** argv)
     testPresets (fixtures);
     testPhase8();
     testAnalyse (fixtures, out, update);
+    testWorkspace();
 
     std::cout << (failures == 0 ? "\nsnapshot: all passed\n" : "\n*** snapshot: " + std::to_string (failures) + " failure(s)\n");
     return failures == 0 ? 0 : 1;
