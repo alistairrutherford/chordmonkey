@@ -72,11 +72,18 @@ namespace chordmonkey::params
     inline constexpr const char* bindStart     = "bindStart";
     inline constexpr const char* keysLock      = "keysLock";
 
+    // Voicing and performance (appended; PLAN.md §3.4, Phase 4): preset parameters.
+    inline constexpr const char* voicing       = "voicing";
+    inline constexpr const char* bass          = "bass";
+    inline constexpr const char* style         = "style";
+    inline constexpr const char* swing         = "swing";
+    inline constexpr const char* humanize      = "humanize";
+
     // ChordChimp Phase 1 (2026-10-25) removed Chordism's Split, Mute CG / SS, the shifters and
     // Test shifter, every Smart Scale and pattern parameter, Test smart, Sync group and
     // Look-ahead; Phase 2 its Custom 1-7, Strum time, Seq sustain and the four step patterns
     // (ChordChimp's PLAN.md §3.5). A saved state's or preset's values for them are ignored.
-    constexpr int numParameters = 34;
+    constexpr int numParameters = 39;
 
     // A Chordism preset's tree, made ChordMonkey's: the Progression value becomes a choice
     // (Chordism's Custom: Diatonic). The other kept values mean the same.
@@ -138,5 +145,10 @@ namespace chordmonkey::params
         std::atomic<float>* fxVelocityRange;
         std::atomic<float>* fxHold;
         std::atomic<float>* fxVoiceLeading;
+        std::atomic<float>* fxVoicing;
+        std::atomic<float>* fxBass;
+        std::atomic<float>* fxStyle;
+        std::atomic<float>* fxSwing;
+        std::atomic<float>* fxHumanize;
     };
 }

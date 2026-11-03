@@ -283,9 +283,11 @@ namespace chordmonkey
             for (int i = 0; i < numPatternSlots; ++i)
             {
                 const ChordNotes next = slotNotes (p.slots[(size_t) i], current.chordOctave);
+                const auto root = (int8_t) p.slots[(size_t) i].chord.root;
                 if (changed != nullptr)
-                    (*changed)[(size_t) (numChordSlots + i)] = ! sameNotes (next, patternChords[(size_t) i]);
+                    (*changed)[(size_t) (numChordSlots + i)] = ! sameNotes (next, patternChords[(size_t) i]) || root != patternRoots[(size_t) i];
                 patternChords[(size_t) i] = next;
+                patternRoots[(size_t) i] = root;
             }
         }
 
@@ -513,6 +515,7 @@ namespace chordmonkey
         TriggerBuffer<256> triggers;
         Workspace workspace;
         PatternChords patternChords {};
+        PatternRoots patternRoots {};
         int chordsPattern = 0;            // the pattern patternChords holds
         bool workspaceChanged = false;
         int currentPattern = 0;           // the Pattern parameter, or the last pattern key
@@ -526,6 +529,6 @@ namespace chordmonkey
         KeyListener listener;
         double seconds = 0.0, secondsPerSample = 1.0 / 44100.0;
         std::atomic<bool> resetRequested { false };
-        ChordPerformer performer { voices, clock, chords, patternChords, context };
+        ChordPerformer performer { voices, clock, chords, patternChords, patternRoots, context };
     };
 }

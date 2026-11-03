@@ -1,8 +1,17 @@
-// The effect chain and its scheduler (ChordChimp's PLAN.md §3.3):
+// The effect chain and its scheduler (ChordChimp's PLAN.md §3.3; PLAN.md §3.4):
 //
-//   trigger → chord slot → voicing (+ voice leading) → Octave → Stack → key octave →
-//           [Strum | Arp] → Repeat → StepSeq gate → Velocity Algorithm → Hold → (Mute, in
-//           ChordEngine) → out
+//   trigger → chord slot → Voicing → voice leading → Octave → Stack → key octave → Bass →
+//           [Style | Repeat → StepSeq gate] → [Strum | Arp] → Velocity Algorithm → Humanize →
+//           Hold → out
+//
+// Voicing and Bass (Phase 4, Voicings.h): the chord is voiced before voice leading; the bass
+// (the chord's root, and its fifth, an octave below the lowest note) goes under the finished
+// voicing. Style (Phase 4, Style.h): each hit of the style's bar is a strike of some of the
+// voices at a velocity scale; while a style other than Block is on, Repeat and the Step
+// Sequencer don't apply (Arp still replaces strikes). Humanize: each strike's tones start up to
+// 15 ms late and get up to ±12 velocity, hashed from the strike's song position (so a take is
+// the same at any block size); a humanized strike's tones (strummed or not) are queued in
+// samples. Arp notes aren't humanized.
 //
 // Key octave (ChordChimp Phase 8): with Follow, a performance's tones move by its key's octave
 // from the home octave (C at MIDI 48), after voice leading and Stack, so Smooth leads from the
@@ -43,6 +52,7 @@
 #include "../theory/ChordModel.h"
 #include "../theory/ChordGroups.h"
 #include "../theory/VoiceLeading.h"
+#include "../theory/Voicings.h"
 #include "../model/Workspace.h"
 #include "Arp.h"
 #include "Clock.h"
@@ -52,6 +62,7 @@
 #include "MidiEvents.h"
 #include "Repeat.h"
 #include "Stack.h"
+#include "Style.h"
 #include "StepSequencer.h"
 #include "Strum.h"
 #include "VelocityAlgorithm.h"
@@ -66,8 +77,10 @@ namespace chordmonkey
     constexpr int numPerformSlots = numChordSlots + numPatternSlots;
     using SlotFlags = std::array<bool, numPerformSlots>;
 
-    // The notes of the playing pattern's slots (inversion, octave and Chord Octave applied).
+    // The notes of the playing pattern's slots (inversion, octave and Chord Octave applied), and
+    // their roots (pitch classes, for Bass).
     using PatternChords = std::array<ChordNotes, numPatternSlots>;
+    using PatternRoots = std::array<int8_t, numPatternSlots>;
 
     struct ChordFxSettings
     {
@@ -83,6 +96,9 @@ namespace chordmonkey
         VelocitySettings velocity;
         HoldMode hold = HoldMode::Off;
         VoiceLeadingMode voiceLeading = VoiceLeadingMode::Off;   // Phase 7
+        VoicingMode voicing = VoicingMode::Close;                // Phase 4 (ChordMonkey)
+        BassMode bass = BassMode::Off;
+        StyleSettings style;              // the style, its swing, and Humanize
     };
 
     // The arp a performance runs (the Arp settings).
@@ -112,8 +128,8 @@ namespace chordmonkey
         static constexpr uint8_t endOrder = 0, inputOrder = 1, startOrder = 2;
 
         ChordPerformer (VoiceTracker& v, Clock& c, const ChordSet& chordSet, const PatternChords& patternChordSet,
-                        const ChordContext& ctx) noexcept
-            : voices (v), clock (c), chords (chordSet), patternChords (patternChordSet), context (ctx) {}
+                        const PatternRoots& patternRootSet, const ChordContext& ctx) noexcept
+            : voices (v), clock (c), chords (chordSet), patternChords (patternChordSet), patternRoots (patternRootSet), context (ctx) {}
 
         VoiceTracker::Source source (int key, int which) const noexcept { return sourceOf (key, which); }
 
@@ -156,7 +172,8 @@ namespace chordmonkey
             // Turning a pattern kind on or off restarts a performance; other arp settings
             // (rate, range, gate, pattern) take effect at its next step.
             const bool restartAll = (old.arp == ArpPattern::Off) != (s.arp == ArpPattern::Off)
-                                 || old.repeat.on != s.repeat.on || old.seq.on != s.seq.on;
+                                 || old.repeat.on != s.repeat.on || old.seq.on != s.seq.on
+                                 || old.style.style != s.style.style;
             std::array<bool, numPerformances> restart {};
             bool anyRestart = false;
             for (int k = 0; k < numPerformances; ++k)
@@ -184,7 +201,7 @@ namespace chordmonkey
             }
 
             SlotFlags slots = changed;
-            if (old.stack != s.stack || old.voiceLeading != s.voiceLeading)
+            if (old.stack != s.stack || old.voiceLeading != s.voiceLeading || old.voicing != s.voicing || old.bass != s.bass)
                 slots.fill (true);
             retuneWhere ([&] (int k, const Perf& p) noexcept
             {
@@ -388,6 +405,11 @@ namespace chordmonkey
             int8_t octave = 0;            // octaves up (a Bind key: Palette's top C)
             uint8_t velocity = 100;
             VoicedNotes notes;
+            VoicedNotes strikeNotes;      // the voices the current strike plays (a style hit's)
+            int8_t hitVoices = StyleVoices::All;
+            uint8_t hitVelocity = 100;    // percent
+            double strikePpq = 0.0;       // where the strike started (Humanize's seed)
+            std::array<int32_t, VoicedNotes::capacity> toneDelay {};   // samples after the strike, in order
             ArpSettings arp;              // the pattern's arp (pattern Off: strikes)
 
             uint8_t src = 0;              // which of the two sources the current strike / step uses
@@ -407,7 +429,8 @@ namespace chordmonkey
         static bool validKey (int key) noexcept { return key >= 0 && key < numPerformances; }
 
         double ppqAt (double sample) const noexcept { return clock.ppqAt (segment, sample); }
-        bool hasRhythm() const noexcept { return fx.repeat.on || fx.seq.on; }
+        bool hasRhythm() const noexcept { return fx.repeat.on || fx.seq.on || fx.style.on(); }
+        StyleGrid styleGrid() const noexcept { return StyleGrid (fx.style, clock.barOrigin(), clock.barLength()); }
         StepGrid stepGrid() const noexcept { return StepGrid (fx.seq, clock.barOrigin(), clock.barLength()); }
 
         // The tones key `key`'s performance of `slot` plays; `base` gets the chord's voicing
@@ -418,6 +441,7 @@ namespace chordmonkey
                 return {};
             ChordNotes notes = slot < numChordSlots ? chordNotes (chords[(size_t) slot], context)
                                                     : patternChords[(size_t) (slot - numChordSlots)];
+            notes = applyVoicing (notes, fx.voicing);
             if (fx.voiceLeading == VoiceLeadingMode::Smooth)
                 notes = leadVoicing (notes, haveLed ? &led : nullptr, context);
             if (base != nullptr)
@@ -425,13 +449,36 @@ namespace chordmonkey
             const VoicedNotes stacked = stackNotes (notes, fx.stack);
             const int shift = (followKeyOctave && key != patternKey ? 12 * (key / 12 - KeyRouter::homeC / 12) : 0)
                             + (validKey (key) ? 12 * perfs[(size_t) key].octave : 0);
-            if (shift == 0)
-                return stacked;
             VoicedNotes moved;
             for (const uint8_t n : stacked)
                 if (n + shift >= 0 && n + shift <= 127)
                     moved.notes[(size_t) moved.size++] = (uint8_t) (n + shift);
-            return moved;
+            return withBass (moved, rootOf (slot));
+        }
+
+        // The root pitch class of chord slot `slot`.
+        int rootOf (int slot) const noexcept
+        {
+            if (slot >= numChordSlots)
+                return patternRoots[(size_t) (slot - numChordSlots)];
+            const auto& c = chords[(size_t) slot];
+            return (((context.key + scaleOffset (context.scale, c.degree) + c.steps[0].accidental) % 12) + 12) % 12;
+        }
+
+        // `v` (ascending) with Bass's notes under it.
+        VoicedNotes withBass (const VoicedNotes& v, int rootPc) const noexcept
+        {
+            int bass[2] {};
+            const int nb = v.size > 0 ? bassNotes (fx.bass, v[0], rootPc, bass) : 0;
+            if (nb == 0)
+                return v;
+            VoicedNotes withIt;
+            for (int i = 0; i < nb; ++i)
+                withIt.notes[(size_t) withIt.size++] = (uint8_t) bass[i];
+            for (const uint8_t n : v)
+                if (withIt.size < VoicedNotes::capacity)
+                    withIt.notes[(size_t) withIt.size++] = n;
+            return withIt;
         }
 
         // voiced(), for a performance that now plays it: its chord is the one the next is led from.
@@ -482,7 +529,8 @@ namespace chordmonkey
         // a note on a grid line counts as on it even when rounding put it a fraction early.
         int velocityAt (const Perf& p, int sample) const noexcept
         {
-            return fx.velocity.apply (p.velocity, clock.barFraction (ppqAt (sample + 0.5)));
+            const int v = p.hitVelocity == 100 ? p.velocity : (int) std::lround (p.velocity * p.hitVelocity / 100.0);
+            return fx.velocity.apply (v < 1 ? 1 : (v > 127 ? 127 : v), clock.barFraction (ppqAt (sample + 0.5)));
         }
 
         void pushAt (double ppq, uint8_t type, uint8_t order, int key, uint32_t tag, uint32_t arg) noexcept
@@ -495,6 +543,15 @@ namespace chordmonkey
         // sequencer's window is open there); grid lines from `from` on count.
         double nextStrikeFrom (double now, double from) const noexcept
         {
+            if (fx.style.on())
+            {
+                const StyleGrid g = styleGrid();
+                const StyleWindow w = g.windowAt (now);
+                if (w.valid && w.end - now >= grid::minFirstStep * (w.end - w.start))
+                    return now;
+                double next = 0.0;
+                return g.nextStart (from, true, next) ? next : std::numeric_limits<double>::infinity();
+            }
             if (! fx.seq.on)
                 return grid::atOrAfter (from, fx.repeat.step());
             const StepGrid g = stepGrid();
@@ -510,6 +567,8 @@ namespace chordmonkey
             Perf& p = perfs[(size_t) key];
             p.arp = arpOf();
             p.arpMode = p.arp.pattern != ArpPattern::Off;
+            p.hitVoices = StyleVoices::All;
+            p.hitVelocity = 100;
             if (p.arpMode)
             {
                 p.arpStepIndex = 0;
@@ -566,14 +625,32 @@ namespace chordmonkey
             const Perf& p = perfs[(size_t) key];
             if (! hasRhythm())
             {
-                beginStrike (key, sample, std::numeric_limits<double>::infinity());
+                beginStrike (key, sample, T, std::numeric_limits<double>::infinity());
+                return;
+            }
+
+            if (fx.style.on())
+            {
+                // A style: the hit sounding now (if enough of it is left after a press), then the next.
+                const StyleGrid g = styleGrid();
+                StyleWindow w = g.windowAt (T);
+                if (w.valid && press && w.end - T < grid::minFirstStep * (w.end - w.start))
+                    w.valid = false;
+                double next = 0.0;
+                bool haveNext = g.nextStart (T, ! w.valid && press, next);
+                if (haveNext && ! press && ! w.valid && next <= T + grid::epsilon)
+                    haveNext = false;
+                if (w.valid)
+                    beginStrike (key, sample, T, w.end, w.voices, w.velocity);
+                if (haveNext)
+                    pushAt (next, NextStrike, startOrder, key, perfs[(size_t) key].gen, 0);
                 return;
             }
 
             if (! fx.seq.on)
             {
                 const RepeatStrike r = repeatStrike (fx.repeat, T, press);
-                beginStrike (key, sample, r.end);
+                beginStrike (key, sample, T, r.end);
                 pushAt (r.next, NextStrike, startOrder, key, p.gen, 0);
                 return;
             }
@@ -600,7 +677,7 @@ namespace chordmonkey
                 }
                 if (! haveNext)
                     haveNext = g.nextStart (T, false, next);
-                beginStrike (key, sample, endPpq);
+                beginStrike (key, sample, T, endPpq);
             }
             else
             {
@@ -612,7 +689,10 @@ namespace chordmonkey
                 pushAt (next, NextStrike, startOrder, key, perfs[(size_t) key].gen, 0);
         }
 
-        void beginStrike (int key, int sample, double endPpq) noexcept
+        // A strike at musical time T, until `endPpq`, of the voices `hitVoices` at `hitVelocity`
+        // percent (a style's hit; all of them otherwise).
+        void beginStrike (int key, int sample, double T, double endPpq, int8_t hitVoices = StyleVoices::All,
+                          uint8_t hitVelocity = 100) noexcept
         {
             Perf& p = perfs[(size_t) key];
             closeStrike (key, sample);
@@ -620,34 +700,71 @@ namespace chordmonkey
             p.src ^= 1;
             ++p.strikeSeq;
             p.strikeOpen = true;
+            p.hitVoices = hitVoices;
+            p.hitVelocity = hitVelocity;
+            p.strikePpq = T;
             if (std::isfinite (endPpq))
                 pushAt (endPpq, StrikeEnd, endOrder, key, p.gen, p.strikeSeq);
             strum (key, sample);
         }
 
-        // Starts the strike's tones: all now, or the first now and the rest queued (Strum).
+        // Starts the strike's tones (the hit's voices): all now, or the first now and the rest
+        // queued (Strum), each later by Humanize's delay if it's on.
         void strum (int key, int sample) noexcept
         {
             Perf& p = perfs[(size_t) key];
             ++p.strumGen;
             drop (key, StrumNote);
-            const int n = p.notes.size;
-            if (fx.strum == StrumMode::Off || n <= 1)
+
+            const uint64_t mask = styleVoiceMask (p.hitVoices, p.notes.size);
+            p.strikeNotes = {};
+            for (int i = 0; i < p.notes.size; ++i)
+                if (((mask >> i) & 1u) != 0)
+                    p.strikeNotes.notes[(size_t) p.strikeNotes.size++] = p.notes[i];
+
+            const int n = p.strikeNotes.size;
+            const double human = fx.style.humanize;
+            const bool strummed = fx.strum != StrumMode::Off && n > 1;
+            if (! strummed && human <= 0.0)
             {
                 const int vel = velocityAt (p, sample);
-                for (const auto note : p.notes)
+                for (const auto note : p.strikeNotes)
                     voices.start (source (key, p.src), outChannel, note, vel, sample, *out);
                 return;
             }
 
-            strummer.order (fx.strum, n, p.order.data());
+            if (strummed)
+                strummer.order (fx.strum, n, p.order.data());
+            else
+                for (int i = 0; i < n; ++i)
+                    p.order[(size_t) i] = (uint8_t) i;
             p.strumCount = n;
             p.strumNext = 0;
-            p.strumMusical = clock.isPlaying();
+            p.strumMusical = clock.isPlaying() && human <= 0.0;
             p.strumStartPpq = ppqAt (sample);
             p.strumStartAbs = clock.blockStart() + sample;
-            p.strumStepPpq = strumRatePpq (fx.strumRate);
+            p.strumStepPpq = strummed ? strumRatePpq (fx.strumRate) : 0.0;
             p.strumStepSamples = p.strumStepPpq * clock.samplesPerQuarter();   // while stopped: the clock's tempo
+
+            if (! p.strumMusical)
+            {
+                // In samples: the strum's steps plus each tone's humanized delay, in time order.
+                const double maxDelay = human * maxHumanizeSeconds * clock.sampleRate();
+                for (int k = 0; k < n; ++k)
+                    p.toneDelay[(size_t) k] = (int32_t) std::llround (k * p.strumStepSamples
+                                                                      + maxDelay * humanize (p.strikePpq, key, p.order[(size_t) k]).delay);
+                for (int a = 1; a < n; ++a)
+                    for (int b = a; b > 0 && p.toneDelay[(size_t) b - 1] > p.toneDelay[(size_t) b]; --b)
+                    {
+                        std::swap (p.toneDelay[(size_t) b - 1], p.toneDelay[(size_t) b]);
+                        std::swap (p.order[(size_t) b - 1], p.order[(size_t) b]);
+                    }
+                if (p.toneDelay[0] > 0)
+                {
+                    queue.push (TimedEvent::atSample (p.strumStartAbs + p.toneDelay[0], StrumNote, startOrder, (uint16_t) key, p.gen, p.strumGen));
+                    return;
+                }
+            }
             playStrumNote (key, sample);
         }
 
@@ -657,8 +774,13 @@ namespace chordmonkey
             if (p.strumNext >= p.strumCount)
                 return;
             const int i = p.order[(size_t) p.strumNext++];
-            if (i < p.notes.size)
-                voices.start (source (key, p.src), outChannel, p.notes[i], velocityAt (p, sample), sample, *out);
+            if (i < p.strikeNotes.size)
+            {
+                int vel = velocityAt (p, sample);
+                if (fx.style.humanize > 0.0)
+                    vel += (int) std::lround (fx.style.humanize * maxHumanizeVelocity * humanize (p.strikePpq, key, i).velocity);
+                voices.start (source (key, p.src), outChannel, p.strikeNotes[i], vel < 1 ? 1 : (vel > 127 ? 127 : vel), sample, *out);
+            }
 
             if (p.strumNext >= p.strumCount)
                 return;
@@ -666,7 +788,7 @@ namespace chordmonkey
             if (p.strumMusical)
                 pushAt (p.strumStartPpq + k * p.strumStepPpq, StrumNote, startOrder, key, p.gen, p.strumGen);
             else
-                queue.push (TimedEvent::atSample (p.strumStartAbs + (int64_t) std::llround (k * p.strumStepSamples), StrumNote,
+                queue.push (TimedEvent::atSample (p.strumStartAbs + p.toneDelay[(size_t) p.strumNext], StrumNote,
                                                   startOrder, (uint16_t) key, p.gen, p.strumGen));
         }
 
@@ -737,6 +859,7 @@ namespace chordmonkey
         Clock& clock;
         const ChordSet& chords;
         const PatternChords& patternChords;
+        const PatternRoots& patternRoots;
         const ChordContext& context;
 
         ChordFxSettings fx;

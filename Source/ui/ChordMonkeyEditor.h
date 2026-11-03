@@ -1,4 +1,4 @@
-// The editor (ChordChimp's PLAN.md §5): one page, about 780×560 and resizable.
+// The editor (ChordChimp's PLAN.md §5): one page, about 780×640 and resizable.
 //
 //   top bar      the name · On · presets · Pattern · Play · Export · Keys
 //   globals      Key · Heard (Analyse, the key heard) · Scale · Chord Group · Progression ·
@@ -6,7 +6,7 @@
 //   keyboard     Bind · From · Keys-Lock · Key octave (Phase 3)
 //   chord pads   the seven white-key chords and the five black-key ones above them (they take
 //                the space the rest leaves)
-//   effects      Strum, Velocity; Arp, Voicing; Repeat, Step seq
+//   effects      Strum, Velocity; Arp, Voicing; Style; Repeat, Step seq
 //   bottom       the output keyboard (can be hidden), which also plays
 //
 // Everything here is a host parameter; the UI keeps only its own preferences (keyboard shown,
@@ -40,8 +40,9 @@ namespace chordmonkey
         const ui::ExportHandle& getExportHandle() const noexcept { return topBar.exportHandle; }
         ui::GlobalRow& getGlobals() noexcept { return globals; }
 
-        static constexpr int defaultWidth = 780, defaultHeight = 560;
-        static constexpr int minWidth = 720, minHeight = 520, maxWidth = 1400, maxHeight = 960;
+        // Phase 4: 80 px taller (the Style card), Phase 3's Keyboard row had made the pads short.
+        static constexpr int defaultWidth = 780, defaultHeight = 640;
+        static constexpr int minWidth = 720, minHeight = 600, maxWidth = 1400, maxHeight = 1040;
         static constexpr int maxPadHeight = 300;   // both rows
 
     private:

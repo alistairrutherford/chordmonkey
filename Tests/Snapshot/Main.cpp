@@ -2,7 +2,7 @@
 // host and checks:
 //
 //   1. snapshots  the editor in a fixed state (C major, the Pop progression, effects, keys held)
-//                 at its default size (780×560), its smallest (720×520, keyboard hidden) and a
+//                 at its default size (780×640), its smallest (720×600, keyboard hidden) and a
 //                 large one (1200×800), each compared with Tests/fixtures/snapshot/*.png (at most
 //                 0.5% of pixels may differ by more than 24 levels: font rendering moves a little
 //                 between macOS versions); clicking a chord pad plays its chord
@@ -282,7 +282,9 @@ namespace
             for (auto* param : p->getParameters())
                 if (auto* r = dynamic_cast<juce::RangedAudioParameter*> (param); r != nullptr && params::isPresetParameter (r->paramID))
                     ++presetParameters;
-            check (wrong == 0 && presetParameters == 24 && compared == (int) factory.size() * presetParameters - 3,
+            // 24 of Chordism's, and Phase 4's five (Voicing, Bass, Style, Swing, Humanize): Chordism has
+            // none of them, so every factory preset leaves them at their defaults (0).
+            check (wrong == 0 && presetParameters == 29 && compared == (int) factory.size() * presetParameters - 3,
                    juce::String (compared) + " preset values (every preset parameter of every preset) are Chordism's"
                        + (firstWrong.isEmpty() ? juce::String() : " (" + firstWrong + ")"));
             p->setCurrentProgram ((int) factory.size() - 1);
@@ -436,6 +438,12 @@ namespace
         set (p, params::velocity, (float) (int) VelocityCurve::House);
         set (p, params::hold, (float) (int) HoldMode::Bar);
         set (p, params::voiceLeading, 1.0f);
+        set (p, params::voicing, (float) (int) VoicingMode::Wide);   // Phase 4
+        set (p, params::bass, (float) (int) BassMode::RootFifth);
+        set (p, params::style, (float) (numStyles - 3));   // Alberti
+        set (p, params::swing, 60.0f);
+        set (p, params::humanize, 100.0f);
+        set (p, params::strum, (float) (int) StrumMode::Random);
         set (p, params::testPattern, 1.0f);
     }
 
@@ -504,6 +512,8 @@ namespace
                 if (rng() % 50 == 0) set (*a, params::key, (float) (rng() % 12));
                 if (rng() % 70 == 0) set (*b, params::arp, (float) (rng() % numArpPatterns));
                 if (rng() % 90 == 0) set (*a, params::chordGroup, (float) (rng() % numChordGroups));
+                if (rng() % 60 == 0) set (*a, params::style, (float) (rng() % numStyles));   // Phase 4: styles with and without Arp
+                if (rng() % 60 == 0) set (*a, params::arp, (float) (rng() % 2 == 0 ? 0 : 1 + rng() % (numArpPatterns - 1)));
                 if (rng() % 200 == 0) head.playing = ! head.playing;
                 if (rng() % 300 == 0) { head.loopStart = (double) (rng() % 4); head.loopEnd = head.loopStart + 0.5 + (rng() % 4); }
                 if (rng() % 40 == 0) a->pushUiNote (48 + (int) (rng() % 30), 100, rng() % 2 == 0);
@@ -1509,7 +1519,7 @@ int main (int argc, char** argv)
         std::unique_ptr<juce::AudioProcessorEditor> first (sized->createEditorIfNeeded());
         sized->removeListener (&watch);
         check (first->getWidth() == ChordMonkeyEditor::defaultWidth && first->getHeight() == ChordMonkeyEditor::defaultHeight && ! watch.changed,
-               "a new instance's editor opens at the default size (780 x 560) and doesn't report a change");
+               "a new instance's editor opens at the default size (780 x 640) and doesn't report a change");
         first->setSize (919, 689);
         close (*sized, first);
 

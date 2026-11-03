@@ -154,6 +154,17 @@ namespace chordmonkey::params
                                                          })));
         layout.add (std::make_unique<AudioParameterChoice> (id (keysLock), "Keys-Lock",
                                                             names (numKeysLockModes, [] (int i) { return keysLockName ((KeysLockMode) i); }), 0));
+
+        // Phase 4: voicing, bass, style, swing, humanize. Appended, never reordered.
+        layout.add (std::make_unique<AudioParameterChoice> (id (voicing), "Voicing",
+                                                            names (numVoicingModes, [] (int i) { return voicingName ((VoicingMode) i); }), 0));
+        layout.add (std::make_unique<AudioParameterChoice> (id (bass), "Bass",
+                                                            names (numBassModes, [] (int i) { return bassModeName ((BassMode) i); }), 0));
+        layout.add (std::make_unique<AudioParameterChoice> (id (style), "Style",
+                                                            names (numStyles, [] (int i) { return styleInfo (i).name; }), 0));
+        layout.add (std::make_unique<AudioParameterFloat> (id (swing), "Swing", juce::NormalisableRange<float> (0.0f, 75.0f, 0.1f), 0.0f,
+                                                           juce::AudioParameterFloatAttributes().withLabel ("%")));
+        layout.add (percent (humanize, "Humanize", 0.0f));
         return layout;
     }
 
@@ -191,13 +202,18 @@ namespace chordmonkey::params
           fxVelocityPeak (state.getRawParameterValue (params::velocityPeak)),
           fxVelocityRange (state.getRawParameterValue (params::velocityRange)),
           fxHold (state.getRawParameterValue (params::hold)),
-          fxVoiceLeading (state.getRawParameterValue (params::voiceLeading))
+          fxVoiceLeading (state.getRawParameterValue (params::voiceLeading)),
+          fxVoicing (state.getRawParameterValue (params::voicing)),
+          fxBass (state.getRawParameterValue (params::bass)),
+          fxStyle (state.getRawParameterValue (params::style)),
+          fxSwing (state.getRawParameterValue (params::swing)),
+          fxHumanize (state.getRawParameterValue (params::humanize))
     {
         jassert (enable && keyParam && scale && group && chordOctave && testPattern && progression && keyOctaveParam && analyseParam
                  && playParam && patternParam && testWorkspaceParam && bindSourceParam && bindStartParam && keysLockParam);
         jassert (fxStack && fxStrum && fxStrumRate && fxArp && fxArpRate && fxArpRange && fxArpGate && fxRepeat && fxRepeatRate
                  && fxRepeatGate && fxSeq && fxSeqPattern && fxSeqSwing && fxSeqGate && fxVelocity && fxVelocityPeak
-                 && fxVelocityRange && fxHold && fxVoiceLeading);
+                 && fxVelocityRange && fxHold && fxVoiceLeading && fxVoicing && fxBass && fxStyle && fxSwing && fxHumanize);
     }
 
     ChordFxSettings Snapshot::chordFx() const noexcept
@@ -222,6 +238,11 @@ namespace chordmonkey::params
         fx.velocity.range = fraction (fxVelocityRange);
         fx.hold = (HoldMode) choice (fxHold, numHoldModes);
         fx.voiceLeading = (VoiceLeadingMode) choice (fxVoiceLeading, numVoiceLeadingModes);
+        fx.voicing = (VoicingMode) choice (fxVoicing, numVoicingModes);
+        fx.bass = (BassMode) choice (fxBass, numBassModes);
+        fx.style.style = choice (fxStyle, numStyles);
+        fx.style.swing = juce::jlimit (0.0, 0.75, (double) fxSwing->load() / 100.0);
+        fx.style.humanize = fraction (fxHumanize);
         return fx;
     }
 

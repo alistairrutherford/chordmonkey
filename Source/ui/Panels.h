@@ -8,7 +8,8 @@
 //                  PLAN.md §3.3); what doesn't apply to the Bind chosen is dimmed
 //   HeardKey       the Heard box (ChordChimp's docs/KEY_DETECTION_PLAN.md K5): Analyse, then the key heard;
 //                  a click on the guess sets Key (and Scale) to it, ✕ stops analysing
-//   EffectsPanel   six cards: Strum, Velocity; Arp, Voicing (Stack, Hold, Voice leading);
+//   EffectsPanel   seven cards: Strum, Velocity; Arp, Voicing (Voicing, Bass, Stack, Voice
+//                  leading); Style across the width (Style, Swing, Humanize, Hold; Phase 4);
 //                  Repeat and Step seq, each with its on switch in the card's corner, and the
 //                  chosen pattern's steps under Step seq
 //
@@ -131,7 +132,7 @@ namespace chordmonkey::ui
 
         Bindings& bindings;
         juce::OwnedArray<ParamControl> controls;
-        std::array<Card, 6> cards;
+        std::array<Card, 7> cards;
         StepSeqView steps;
 
         static constexpr int titleHeight = 22, controlHeight = 40, stepsHeight = 22, gap = 8;

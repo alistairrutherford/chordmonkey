@@ -364,8 +364,19 @@ namespace chordmonkey::ui
 
         auto& voicing = cards[3];
         voicing.title = "Voicing";
-        voicing.controls = { &add (params::stack), &add (params::hold), &add (params::voiceLeading, "Voice leading") };
+        voicing.controls = { &add (params::voicing, "Voicing"), &add (params::bass), &add (params::stack),
+                             &add (params::voiceLeading, "Voice leading") };
+        voicing.controls[0]->setTooltip ("Open: the second-highest note an octave down. Spread: the lowest stays, the rest an octave up. "
+                                         "Wide: the second- and fourth-highest down");
+        voicing.controls[1]->setTooltip ("Bass: the chord's root (and its fifth) an octave below the chord");
         voicing.controls.back()->setTooltip ("Smooth: each chord takes the inversion nearest the one before");
+
+        auto& style = cards[6];
+        style.title = "Style";
+        style.controls = { &add (params::style), &add (params::swing), &add (params::humanize), &add (params::hold) };
+        style.controls[0]->setTooltip ("The rhythm the chords play in, bar by bar. Block: held. Any other style replaces Repeat and Step seq");
+        style.controls[1]->setTooltip ("Swing: the style's off-beat eighths and sixteenths later (50%: a triplet feel)");
+        style.controls[2]->setTooltip ("Humanize: each note up to 15 ms later and up to 12 softer or louder, the same every time the song plays there");
 
         auto& repeat = cards[4];
         repeat.title = "Repeat";
@@ -392,7 +403,7 @@ namespace chordmonkey::ui
     int EffectsPanel::preferredHeight()
     {
         const int card = titleHeight + controlHeight + 8;
-        return 2 * card + (card + stepsHeight + 4) + 2 * gap;
+        return 3 * card + (card + stepsHeight + 4) + 3 * gap;
     }
 
     void EffectsPanel::paint (juce::Graphics& g)
@@ -433,6 +444,11 @@ namespace chordmonkey::ui
             cards[(size_t) (2 * row)].bounds = line.removeFromLeft ((line.getWidth() - gap) / 2);
             line.removeFromLeft (gap);
             cards[(size_t) (2 * row + 1)].bounds = line;
+            if (row == 1)
+            {
+                cards[6].bounds = r.removeFromTop (card);   // Style, across the width
+                r.removeFromTop (gap);
+            }
         }
         for (auto& c : cards)
             layoutCard (c);
