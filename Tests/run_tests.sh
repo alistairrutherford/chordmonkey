@@ -46,6 +46,7 @@ compile_and_run test_bind
 compile_and_run test_style
 compile_and_run test_chordsets
 compile_and_run test_render
+compile_and_run test_detect
 
 echo ""
 echo "All test binaries passed."

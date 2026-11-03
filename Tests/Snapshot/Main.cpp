@@ -40,6 +40,10 @@
 //                 (Phase 5)
 //   9. workspace  the workspace panel's actions, drops from the pads and between slots, the
 //                 preview, and the MIDI drag file = the render (Phase 6)
+//  10. Detect     (Phase 8) capture from the editor (the button's states, the input passing
+//                 through, no allocation, the click that writes the pattern and the key) and
+//                 from the host's thread (Capture, Use result seen by the timer); nothing heard
+//                 keeps capturing; the cross; not saved, not in presets
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -1554,6 +1558,135 @@ namespace
 namespace
 {
     // The workspace panel (PLAN.md §5, Phase 6): its actions, a drop, the preview, the drag-out.
+    void testDetect()
+    {
+        std::cout << "== Detect (Phase 8) ==\n";
+        auto p = std::make_unique<ChordMonkeyProcessor>();
+        p->prepareToPlay (48000.0, 512);
+        auto editor = std::unique_ptr<ChordMonkeyEditor> (dynamic_cast<ChordMonkeyEditor*> (p->createEditor()));
+        auto& panel = editor->getWorkspacePanel();
+        LoopPlayHead head;
+        head.looping = false;
+        head.bpm = 120.0;
+        p->setPlayHead (&head);
+
+        // Plays `chords` (4 beats each, held 3.5) from the playhead on, as host MIDI; returns the
+        // note-ons that came out, and counts allocations.
+        int allocations = 0;
+        auto play = [&] (const std::vector<std::vector<int>>& chords)
+        {
+            std::vector<int> ons;
+            const double spb = 48000.0 * 60.0 / head.bpm;
+            const double from = head.ppq;
+            const int blocks = (int) std::ceil (chords.size() * 4.0 * spb / 512.0) + 4;
+            juce::AudioBuffer<float> audio (2, 512);
+            juce::MidiBuffer midi;
+            midi.ensureSize (1 << 16);
+            for (int b = 0; b < blocks; ++b)
+            {
+                midi.clear();
+                const double start = head.ppq, end = head.ppq + 512 / spb;
+                for (size_t c = 0; c < chords.size(); ++c)
+                    for (int note : chords[c])
+                    {
+                        const double on = from + (double) c * 4.0, off = on + 3.5;
+                        if (on >= start && on < end)
+                            midi.addEvent (juce::MidiMessage::noteOn (1, note, (juce::uint8) 90), (int) ((on - start) * spb));
+                        if (off >= start && off < end)
+                            midi.addEvent (juce::MidiMessage::noteOff (1, note), (int) ((off - start) * spb));
+                    }
+                const auto before = allocCount.load();
+                {
+                    AllocWatch watch;
+                    p->processBlock (audio, midi);
+                }
+                allocations += (int) (allocCount.load() - before);
+                head.advance (512, 48000.0);
+                for (const auto m : midi)
+                    if (m.getMessage().isNoteOn())
+                        ons.push_back (m.getMessage().getNoteNumber());
+            }
+            return ons;
+        };
+        auto names = [&]
+        {
+            const auto w = p->getWorkspace();
+            const auto s = p->currentSettings();
+            juce::StringArray out;
+            for (int i = 0; i < w.patterns[0].size(); ++i)
+                out.add (juce::String (namePatternSlot (w.patterns[0].slots[(size_t) i], s.key, s.scale).text()) + ":"
+                         + juce::String (w.patterns[0].slots[(size_t) i].halfBeats / 2));
+            return out.joinIntoString (" ");
+        };
+        auto buttonText = [&]
+        {
+            editor->refreshNow();
+            return panel.detectText();
+        };
+
+        // From the editor: Detect, play, the button counts the chords, a click writes them.
+        editor->refreshNow();
+        const auto idle = buttonText();
+        panel.detectClicked();
+        const bool capturing = p->detectMode() == params::DetectMode::Capture;
+        const auto listening = buttonText();
+        const std::vector<std::vector<int>> amFCG { { 57, 60, 64 }, { 53, 57, 60 }, { 48, 52, 55 }, { 55, 59, 62 } };
+        std::vector<std::vector<int>> twice (amFCG);
+        twice.insert (twice.end(), amFCG.begin(), amFCG.end());
+        const auto ons = play (twice);
+        std::vector<int> played;
+        for (const auto& c : twice)
+            played.insert (played.end(), c.begin(), c.end());
+        const auto counted = buttonText();
+        check (idle == "Detect" && capturing && listening == juce::String::fromUTF8 ("Listening\xe2\x80\xa6") && ons == played && allocations == 0
+                   && counted == "Use 8 chords",
+               "Detect captures: the button reads " + idle + ", " + listening + ", then " + counted + "; the "
+                   + juce::String ((int) ons.size()) + " notes played pass through, nothing else; no allocation");
+        panel.detectClicked();
+        editor->refreshNow();
+        const auto s = p->currentSettings();
+        const KeyGuess g = p->readKeyGuess();
+        check (p->detectMode() == params::DetectMode::Off && g.has() && s.key == g.tonic
+                   && names() == "Am:4 F:4 C:4 G:4 Am:4 F:4 C:4 G:4" && buttonText() == "Detect",
+               "the click writes them into pattern A (" + names() + ") in the key heard (" + juce::String (guessKeyName (g.tonic, g.minor))
+                   + (g.minor ? " minor" : " major") + ") and Detect is off");
+
+        // From the host's thread: Capture, play, Use result (seen by the timer).
+        fromAnotherThread (*p, params::detect, (float) params::DetectMode::Capture);
+        runTimers();
+        play ({ { 50, 53, 57, 60 }, { 43, 47, 50, 53 } });
+        fromAnotherThread (*p, params::detect, (float) params::DetectMode::UseResult);
+        runTimers();
+        check (p->detectMode() == params::DetectMode::Off && names() == "Dm7:4 G7:4",
+               "from the host: Capture, then Use result writes the new capture (" + names() + ")");
+
+        // Use result with nothing heard keeps capturing; the cross leaves the pattern as it was.
+        const auto before = p->getWorkspace();
+        fromAnotherThread (*p, params::detect, (float) params::DetectMode::Capture);
+        runTimers();
+        play ({});
+        fromAnotherThread (*p, params::detect, (float) params::DetectMode::UseResult);
+        runTimers();
+        const bool kept = p->detectMode() == params::DetectMode::Capture;
+        editor->refreshNow();
+        panel.cancelDetect();
+        check (kept && p->detectMode() == params::DetectMode::Off && p->getWorkspace() == before,
+               "Use result with nothing heard keeps capturing; the cross stops and the pattern stays");
+
+        // Not saved, not in presets.
+        set (*p, params::detect, (float) params::DetectMode::Capture);
+        juce::MemoryBlock state;
+        p->getStateInformation (state);
+        auto restored = std::make_unique<ChordMonkeyProcessor>();
+        restored->setStateInformation (state.getData(), (int) state.getSize());
+        check (restored->detectMode() == params::DetectMode::Off && ! params::isPresetParameter (params::detect)
+                   && ! p->presetState().getChildWithProperty ("id", params::detect).isValid(),
+               "Detect isn't saved with the state or held in presets");
+        set (*p, params::detect, 0.0f);
+        p->setPlayHead (nullptr);
+        editor.reset();
+    }
+
     void testWorkspacePanel()
     {
         std::cout << "== workspace panel (Phase 6) ==\n";
@@ -1892,6 +2025,7 @@ int main (int argc, char** argv)
     testWorkspace();
     testChordSetsAndPresets();
     testWorkspacePanel();
+    testDetect();
 
     std::cout << (failures == 0 ? "\nsnapshot: all passed\n" : "\n*** snapshot: " + std::to_string (failures) + " failure(s)\n");
     return failures == 0 ? 0 : 1;

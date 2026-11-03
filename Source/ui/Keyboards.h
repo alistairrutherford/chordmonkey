@@ -24,6 +24,8 @@ namespace chordmonkey::ui
         KeyGuess guess;                   // the key heard in Analyse mode
         Workspace workspace;              // Phase 6: the patterns
         int playingPattern = 0, playingSlot = -1;
+        params::DetectMode detect = params::DetectMode::Off;   // Phase 8
+        int heardChords = 0;              // chords heard in this capture
     };
 
     // Piano geometry for notes lo..hi (both white keys) across a width.

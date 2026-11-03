@@ -64,7 +64,7 @@ namespace chordmonkey::params
 
     bool isPresetParameter (const juce::String& paramId)
     {
-        for (const char* excluded : { enable, testPattern, keyOctave, analyse, play, testWorkspace, bindSource, bindStart, keysLock })
+        for (const char* excluded : { enable, testPattern, keyOctave, analyse, detect, play, testWorkspace, bindSource, bindStart, keysLock })
             if (paramId == excluded)
                 return false;
         return true;
@@ -165,6 +165,9 @@ namespace chordmonkey::params
         layout.add (std::make_unique<AudioParameterFloat> (id (swing), "Swing", juce::NormalisableRange<float> (0.0f, 75.0f, 0.1f), 0.0f,
                                                            juce::AudioParameterFloatAttributes().withLabel ("%")));
         layout.add (percent (humanize, "Humanize", 0.0f));
+
+        // Phase 8: Detect. Appended, never reordered.
+        layout.add (std::make_unique<AudioParameterChoice> (id (detect), "Detect", StringArray { "Off", "Capture", "Use result" }, 0));
         return layout;
     }
 
@@ -184,6 +187,7 @@ namespace chordmonkey::params
           bindSourceParam (state.getRawParameterValue (params::bindSource)),
           bindStartParam (state.getRawParameterValue (params::bindStart)),
           keysLockParam (state.getRawParameterValue (params::keysLock)),
+          detectParam (state.getRawParameterValue (params::detect)),
           fxStack (state.getRawParameterValue (params::stack)),
           fxStrum (state.getRawParameterValue (params::strum)),
           fxStrumRate (state.getRawParameterValue (params::strumRate)),
@@ -210,7 +214,7 @@ namespace chordmonkey::params
           fxHumanize (state.getRawParameterValue (params::humanize))
     {
         jassert (enable && keyParam && scale && group && chordOctave && testPattern && progression && keyOctaveParam && analyseParam
-                 && playParam && patternParam && testWorkspaceParam && bindSourceParam && bindStartParam && keysLockParam);
+                 && playParam && patternParam && testWorkspaceParam && bindSourceParam && bindStartParam && keysLockParam && detectParam);
         jassert (fxStack && fxStrum && fxStrumRate && fxArp && fxArpRate && fxArpRange && fxArpGate && fxRepeat && fxRepeatRate
                  && fxRepeatGate && fxSeq && fxSeqPattern && fxSeqSwing && fxSeqGate && fxVelocity && fxVelocityPeak
                  && fxVelocityRange && fxHold && fxVoiceLeading && fxVoicing && fxBass && fxStyle && fxSwing && fxHumanize);
@@ -257,6 +261,7 @@ namespace chordmonkey::params
     }
 
     AnalyseMode Snapshot::analyseMode() const noexcept { return (AnalyseMode) choice (analyseParam, 3); }
+    DetectMode Snapshot::detectMode() const noexcept { return (DetectMode) choice (detectParam, 3); }
 
     bool Snapshot::testWorkspace() const noexcept { return on (testWorkspaceParam); }
 
@@ -275,6 +280,7 @@ namespace chordmonkey::params
         s.progression = progressionFromChoice (whole (progression));
         s.followKeyOctave = choice (keyOctaveParam, 2) == 1;
         s.analysing = analyseMode() != AnalyseMode::Off;
+        s.capturing = detectMode() != DetectMode::Off;
         s.play = on (playParam);
         s.pattern = choice (patternParam, numPatterns);
         s.bind = (BindSource) choice (bindSourceParam, numBindSources);

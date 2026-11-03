@@ -100,8 +100,15 @@ namespace chordmonkey::ui
         chordSetsButton.onClick = [this] { showChordSetMenu(); };
         patternButton.setTooltip ("Transpose the pattern to the Key, copy it to another pattern, clear it");
         patternButton.onClick = [this] { showPatternMenu(); };
-        for (auto* c : std::initializer_list<juce::Component*> { &play, &chordSetsButton, &patternButton, &exportHandle })
+        bindings.bound (params::detect);
+        detectButton.onClick = [this] { detectClicked(); };
+        detectButton.setClickingTogglesState (false);
+        cancelDetectButton.setTooltip ("Stop capturing; the pattern stays as it was");
+        cancelDetectButton.onClick = [this] { cancelDetect(); };
+        addChildComponent (cancelDetectButton);
+        for (auto* c : std::initializer_list<juce::Component*> { &play, &detectButton, &chordSetsButton, &patternButton, &exportHandle })
             addAndMakeVisible (c);
+        updateDetect();
     }
 
     int WorkspacePanel::preferredHeight() { return titleHeight + bodyHeight + 6; }
@@ -121,8 +128,51 @@ namespace chordmonkey::ui
         for (int i = 0; i < numPatterns; ++i)
             tabs[(size_t) i].setToggleState (i == cur, juce::dontSendNotification);
         exportHandle.setEnabledFor (! m.workspace.patterns[(size_t) cur].empty());
+        updateDetect();
         if (changed)
             repaint();
+    }
+
+    //==========================================================================
+    // Detect (Phase 8).
+
+    void WorkspacePanel::updateDetect()
+    {
+        const bool capturing = model.detect != params::DetectMode::Off;
+        const int n = juce::jmin (model.heardChords, numPatternSlots);
+        const juce::String text = ! capturing ? juce::String ("Detect")
+                                : model.heardChords == 0 ? juce::String::fromUTF8 ("Listening\xe2\x80\xa6")
+                                : "Use " + juce::String (n) + (n == 1 ? " chord" : " chords");
+        if (detectButton.getButtonText() != text)
+            detectButton.setButtonText (text);
+        detectButton.setToggleState (capturing, juce::dontSendNotification);
+        detectButton.setTooltip (! capturing ? "Detect: play chords into ChordMonkey (the keyboard, or a clip on the track feeding it) and they become "
+                                               "pattern " + juce::String (patternName (currentPattern())) + ", with the key heard"
+                                 : model.heardChords == 0 ? "Capturing: play chords, or let a clip play into this track. The cross stops"
+                                 : "Write the " + juce::String (n) + (n == 1 ? " chord" : " chords") + " heard into pattern "
+                                   + juce::String (patternName (currentPattern())) + " (replacing it), and set Key and Scale to the key heard");
+        if (cancelDetectButton.isVisible() != capturing)
+        {
+            cancelDetectButton.setVisible (capturing);
+            resized();
+        }
+    }
+
+    void WorkspacePanel::detectClicked()
+    {
+        if (model.detect == params::DetectMode::Off && processor.detectMode() == params::DetectMode::Off)
+            bindings.set (params::detect, (float) params::DetectMode::Capture);
+        else
+            processor.applyDetect();
+        model.detect = processor.detectMode();
+        updateDetect();
+    }
+
+    void WorkspacePanel::cancelDetect()
+    {
+        processor.cancelDetect();
+        model.detect = params::DetectMode::Off;
+        updateDetect();
     }
 
     //==========================================================================
@@ -363,6 +413,10 @@ namespace chordmonkey::ui
         patternButton.setBounds (head.removeFromRight (72).reduced (0, 1));
         head.removeFromRight (6);
         chordSetsButton.setBounds (head.removeFromRight (92).reduced (0, 1));
+        head.removeFromRight (6);
+        detectButton.setBounds (head.removeFromRight (104).reduced (0, 1));
+        if (cancelDetectButton.isVisible())
+            cancelDetectButton.setBounds (head.removeFromRight (22).reduced (0, 1));
 
         auto body = r.removeFromTop (bodyHeight).reduced (0, 6);
         for (auto& t : tabs)

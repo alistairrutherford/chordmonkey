@@ -1,6 +1,7 @@
 #include "ChordMonkeyProcessor.h"
 #include "../ui/ChordMonkeyEditor.h"
 #include "../core/model/ChordSets.h"
+#include "../core/model/Detect.h"
 #include <cmath>
 
 namespace chordmonkey
@@ -17,11 +18,12 @@ namespace chordmonkey
                     child.removeProperty ("value", nullptr);
         }
 
-        // Analyse isn't saved (ChordChimp's docs/KEY_DETECTION_PLAN.md K5.4): a set saved mid-analysis opens
-        // playing chords.
+        // Analyse and Detect aren't saved (ChordChimp's docs/KEY_DETECTION_PLAN.md K5.4): a set
+        // saved mid-analysis or mid-capture opens playing chords.
         void dropAnalyse (juce::ValueTree& tree)
         {
             tree.removeChild (tree.getChildWithProperty ("id", params::analyse), nullptr);
+            tree.removeChild (tree.getChildWithProperty ("id", params::detect), nullptr);
         }
 
         const char* analyseName (params::AnalyseMode m)
@@ -205,6 +207,11 @@ namespace chordmonkey
         publishNoteStates();
         lastChordSlot.store (engine.getLastChordSlot(), std::memory_order_relaxed);
         keyGuess.store (engine.getKeyGuess().pack(), std::memory_order_relaxed);
+        if (engine.takeHeardChanged())
+        {
+            engine.getHeard (heardScratch);
+            heard.publish (heardScratch);
+        }
         soundingNotes.store (engine.getVoices().soundingNotes(), std::memory_order_relaxed);
         transportPlaying.store (transport.playing, std::memory_order_relaxed);
 
@@ -252,9 +259,11 @@ namespace chordmonkey
         if (const int program = pendingProgram.exchange (-1); program >= 0)
             loadProgram (program);
 
-        // The host (or the bridge) asked for the guess.
+        // The host (or the bridge) asked for the guess, or for Detect's result.
         if (snapshot.analyseMode() == params::AnalyseMode::UseGuess)
             applyGuess();
+        if (snapshot.detectMode() == params::DetectMode::UseResult)
+            applyDetect();
 
         // A Bind pattern key chose a pattern: the Pattern parameter follows, for the host and
         // the editor (the engine already plays it).
@@ -318,6 +327,74 @@ namespace chordmonkey
         for (size_t i = 0; i < n; ++i) changes[i].first->beginChangeGesture();
         for (size_t i = 0; i < n; ++i) changes[i].first->setValueNotifyingHost (changes[i].second);
         for (size_t i = 0; i < n; ++i) changes[i].first->endChangeGesture();
+    }
+
+    //==========================================================================
+    // Detect.
+
+    const HeardChords& ChordMonkeyProcessor::heardChords()
+    {
+        if (heard.hasNew())
+            heardCache = heard.read();
+        return heardCache;
+    }
+
+    bool ChordMonkeyProcessor::applyDetect()
+    {
+        const HeardChords& h = heardChords();
+        const KeyGuess g = readKeyGuess();
+        const auto s = snapshot.engineSettings();
+
+        std::array<std::pair<juce::RangedAudioParameter*, float>, 3> changes {};
+        size_t n = 0;
+        const auto change = [&] (const char* id, float plain)
+        {
+            if (auto* p = state.getParameter (id))
+                if (const float v = p->convertTo0to1 (plain); std::abs (p->getValue() - v) > 1.0e-6f)
+                    changes[n++] = { p, v };
+        };
+        const auto apply = [&]
+        {
+            for (size_t i = 0; i < n; ++i) changes[i].first->beginChangeGesture();
+            for (size_t i = 0; i < n; ++i) changes[i].first->setValueNotifyingHost (changes[i].second);
+            for (size_t i = 0; i < n; ++i) changes[i].first->endChangeGesture();
+        };
+
+        const int key = g.has() ? g.tonic : s.key;
+        const Scale scale = g.has() ? scaleForGuess (s.scale, g.minor) : s.scale;
+        const Pattern p = patternFromHeard (h, key, scale);
+        if (p.empty())
+        {
+            change (params::detect, (float) params::DetectMode::Capture);   // nothing yet: keep capturing
+            apply();
+            return false;
+        }
+
+        auto w = getWorkspace();
+        w.patterns[(size_t) juce::jlimit (0, numPatterns - 1, s.pattern)] = p;
+        setWorkspace (w);
+        engine.requestHeardReset();      // the next capture starts empty
+        heardCache = {};
+        if (g.has())
+        {
+            change (params::key, (float) key);
+            change (params::scale, (float) (int) scale);
+        }
+        change (params::detect, (float) params::DetectMode::Off);
+        apply();
+        return true;
+    }
+
+    void ChordMonkeyProcessor::cancelDetect()
+    {
+        if (auto* p = state.getParameter (params::detect))
+        {
+            p->beginChangeGesture();
+            p->setValueNotifyingHost (p->convertTo0to1 ((float) params::DetectMode::Off));
+            p->endChangeGesture();
+        }
+        engine.requestHeardReset();
+        heardCache = {};
     }
 
     juce::File ChordMonkeyProcessor::heardKeyFile()

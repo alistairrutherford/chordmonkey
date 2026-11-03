@@ -13,6 +13,9 @@
 //   Enable off    → input passes through unchanged
 //   Analyse       → input passes through unchanged and the KeyListener guesses its key
 //                   (ChordChimp's docs/KEY_DETECTION_PLAN.md); no chords, no test pattern
+//   Detect        → Capture: as Analyse, and the ChordListener groups the input into chords on
+//                   the beat grid (ChordListener.h; PLAN.md §3.6, Phase 8) for the plug-in to
+//                   write into a pattern (core/model/Detect.h)
 //   Play          → the workspace's current pattern plays in time (PatternPlayer.h, PLAN.md
 //                   §3.2, Phase 2), through the same effects, as performance 128
 //   Bind          → All keys (the above), or a Bind zone of slot and pattern keys with
@@ -36,6 +39,7 @@
 
 #include "../theory/Progressions.h"
 #include "ChordFx.h"
+#include "ChordListener.h"
 #include "Clock.h"
 #include "KeyListener.h"
 #include "KeysLock.h"
@@ -63,6 +67,7 @@ namespace chordmonkey
         bool followKeyOctave = false;     // Key octave: Follow (Phase 8)
         bool testPattern = false;
         bool analysing = false;           // Analyse is Listen or Use guess (key detection)
+        bool capturing = false;           // Detect is Capture or Use result (Phase 8)
         bool play = false;                // Play: the current pattern plays (Phase 2)
         int pattern = 0;                  // Pattern: A-D
         BindSource bind = BindSource::AllKeys;   // Phase 3
@@ -70,6 +75,9 @@ namespace chordmonkey
         KeysLockMode keysLock = KeysLockMode::Off;
         int outputChannel = 0;            // 0..15
         ChordFxSettings fx;
+
+        // Analyse or Detect: the input passes through and is listened to; no chords play.
+        bool listening() const noexcept { return analysing || capturing; }
     };
 
     class ChordEngine
@@ -95,6 +103,12 @@ namespace chordmonkey
 
             if (resetRequested.exchange (false))
                 releaseAll (0, out);
+            if (heardResetRequested.exchange (false))
+            {
+                chordListener.reset();
+                if (! s.analysing)
+                    listener.reset();
+            }
 
             if (wasPlaying && ! t.playing)
                 releaseAll (0, out);   // transport stop: all notes off (Chordism's PLAN.md §5)
@@ -126,9 +140,9 @@ namespace chordmonkey
                 Transport segmentTransport = t;
                 segmentTransport.ppq = g.ppq;
                 injected.clear();
-                pattern.generate (s.enabled && s.testPattern && ! s.analysing, segmentTransport, g.end - g.start, injected, g.start);
+                pattern.generate (s.enabled && s.testPattern && ! s.listening(), segmentTransport, g.end - g.start, injected, g.start);
                 triggers.clear();
-                playOn = s.enabled && s.play && ! s.analysing;
+                playOn = s.enabled && s.play && ! s.listening();
                 player.generate (playOn, workspace, currentPattern, clock, seg, g.end - g.start, triggers, g.start);
 
                 int j = 0, k = 0, cursor = g.start, runs = 0;
@@ -181,8 +195,11 @@ namespace chordmonkey
             }
 
             seconds += numSamples * secondsPerSample;
-            if (current.analysing)
+            listenBeats += numSamples / beatSamples();
+            if (current.listening())
                 listener.advance (seconds);
+            if (current.capturing)
+                chordListener.advanceTo (listenBeats);
         }
 
         // All notes off now (bypass, transport stop, all-notes-off, destruction).
@@ -194,6 +211,7 @@ namespace chordmonkey
             player.reset();
             regenerate = false;
             listener.allUp (timeAt (sample));
+            chordListener.allUp (beatAt (sample));
             refreshChords (sample, nullptr);
         }
 
@@ -224,6 +242,15 @@ namespace chordmonkey
 
         // The key heard in Analyse mode (the last analysis's, until the next one starts).
         KeyGuess getKeyGuess() const noexcept { return listener.guess(); }
+
+        // The chords heard in Detect's Capture (the last capture's, until the next one starts),
+        // and whether they changed since the last call (audio thread).
+        void getHeard (HeardChords& out) const noexcept { chordListener.heard (out); }
+        bool takeHeardChanged() noexcept { return chordListener.takeChanged(); }
+
+        // The next process() starts a new capture (and key guess, unless Analyse is on): for
+        // the plug-in, once a result is used or a capture cancelled. Any thread.
+        void requestHeardReset() noexcept { heardResetRequested.store (true); }
 
         // For the editor: input key `note` is down; a performance of key `note` is playing, held
         // or not.
@@ -322,11 +349,13 @@ namespace chordmonkey
                 currentPattern = s.pattern < 0 ? 0 : (s.pattern >= numPatterns ? numPatterns - 1 : s.pattern);
             settingsSeen = true;
 
-            if (s.enabled != old.enabled || s.analysing != old.analysing)
+            if (s.enabled != old.enabled || s.analysing != old.analysing || s.capturing != old.capturing)
             {
                 releaseAll (0, out);
-                if (s.analysing && ! old.analysing)
+                if (s.listening() && ! old.listening())
                     listener.reset();     // each analysis starts afresh
+                if (s.capturing && ! old.capturing)
+                    chordListener.reset();   // and each capture
                 performer.applySettings (s.fx, s.outputChannel, {}, 0, out);
                 return;
             }
@@ -350,6 +379,15 @@ namespace chordmonkey
         // Seconds since the engine started, at `sample` of this block (the KeyListener's clock).
         double timeAt (int sample) const noexcept { return seconds + sample * secondsPerSample; }
 
+        // Beats since the engine started, at the host's tempo, counted whether or not it plays
+        // (the ChordListener's clock: a looping clip or a stopped transport counts on).
+        double beatSamples() const noexcept
+        {
+            const double spq = clock.samplesPerQuarter();
+            return spq > 0.0 && std::isfinite (spq) ? spq : 22050.0;
+        }
+        double beatAt (int sample) const noexcept { return listenBeats + sample / beatSamples(); }
+
         void handle (const MidiEvent& e, int numSamples, BlockEvents& out) noexcept
         {
             const int sample = clampSample (e.sample, numSamples);
@@ -367,14 +405,16 @@ namespace chordmonkey
                 h.down = true;
                 h.velocity = (uint8_t) e.velocity();
                 h.channel = (uint8_t) e.channel();
-                h.passThrough = ! current.enabled || current.analysing;
+                h.passThrough = ! current.enabled || current.listening();
                 h.slot = -1;
 
                 if (h.passThrough)
                 {
                     voices.start ((VoiceTracker::Source) n, h.channel, n, h.velocity, sample, out);
-                    if (current.analysing)
+                    if (current.listening())
                         listener.noteOn (n, h.velocity, timeAt (sample));
+                    if (current.capturing)
+                        chordListener.noteOn (n, timeAt (sample), beatAt (sample));
                 }
                 else if (e.origin == MidiEvent::fromWorkspace)
                     pressPatternSlot (n, n - MidiEvent::workspaceKey, sample, out);
@@ -504,8 +544,10 @@ namespace chordmonkey
             if (h.passThrough)
             {
                 voices.release ((VoiceTracker::Source) n, sample, out);
-                if (current.analysing)
+                if (current.listening())
                     listener.noteOff (n, timeAt (sample));
+                if (current.capturing)
+                    chordListener.noteOff (n, beatAt (sample));
             }
             else if (h.slot >= 0)
                 performer.release (n, sample, out);   // ends, or is held (Hold)
@@ -538,8 +580,9 @@ namespace chordmonkey
         int lastChordSlot = -1;
         bool wasPlaying = false;
         KeyListener listener;
-        double seconds = 0.0, secondsPerSample = 1.0 / 44100.0;
-        std::atomic<bool> resetRequested { false };
+        ChordListener chordListener;
+        double seconds = 0.0, secondsPerSample = 1.0 / 44100.0, listenBeats = 0.0;
+        std::atomic<bool> resetRequested { false }, heardResetRequested { false };
         ChordPerformer performer { voices, clock, chords, patternChords, patternRoots, context };
     };
 }

@@ -1,7 +1,9 @@
 // The workspace panel (PLAN.md §5, Phase 6): the current pattern's eight slots, as a card under
 // the chord pads.
 //
-//   title row   WORKSPACE · Chord sets ▾ (load a factory or user set into the pattern; save the
+//   title row   WORKSPACE · Detect (Phase 8: capture chords played in, keyboard or clip; click
+//               again to write them into the pattern, × to cancel) · Chord sets ▾ (load a
+//               factory or user set into the pattern; save the
 //               pattern as one) · Pattern ▾ (transpose to the Key, copy to another pattern,
 //               clear, save as a chord set) · Drag MIDI (drag the pattern into the host as a clip:
 //               one loop, performance included; with Alt, chords only)
@@ -64,6 +66,9 @@ namespace chordmonkey::ui
         juce::Result saveChordSet (const juce::String& name);
         bool usesSuggestions() const;                   // load Scale and Style with a chord set (an editor preference)
         void setUsesSuggestions (bool);
+        void detectClicked();                           // Off: start capturing; capturing: use the result
+        void cancelDetect();
+        juce::String detectText() const { return detectButton.getButtonText(); }
 
         // Slot geometry (for the mouse and the test).
         juce::Rectangle<float> slotBounds (int slot) const;
@@ -96,6 +101,8 @@ namespace chordmonkey::ui
         std::array<juce::TextButton, numPatterns> tabs;
         ParamControl play;
         juce::TextButton chordSetsButton { "Chord sets" }, patternButton { "Pattern" };
+        juce::TextButton detectButton { "Detect" }, cancelDetectButton { juce::String::fromUTF8 ("\xc3\x97") };
+        void updateDetect();
         PatternExportHandle exportHandle;
         juce::Rectangle<int> slotsArea;
         int previewing = -1, pressed = -1, dropHint = -1, shownPattern = -1;

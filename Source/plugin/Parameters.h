@@ -79,18 +79,25 @@ namespace chordmonkey::params
     inline constexpr const char* swing         = "swing";
     inline constexpr const char* humanize      = "humanize";
 
+    // Detect (appended; PLAN.md §3.6, Phase 8): Off, Capture (no chords; the input passes
+    // through, is grouped into chords and its key guessed), Use result (a command: the
+    // processor's timer writes the chords into the current pattern, sets Key and Scale to the
+    // guess and Detect back to Off). Not in presets, not saved.
+    inline constexpr const char* detect        = "detect";
+    enum class DetectMode { Off, Capture, UseResult };
+
     // ChordChimp Phase 1 (2026-10-25) removed Chordism's Split, Mute CG / SS, the shifters and
     // Test shifter, every Smart Scale and pattern parameter, Test smart, Sync group and
     // Look-ahead; Phase 2 its Custom 1-7, Strum time, Seq sustain and the four step patterns
     // (ChordChimp's PLAN.md §3.5). A saved state's or preset's values for them are ignored.
-    constexpr int numParameters = 39;
+    constexpr int numParameters = 40;
 
     // A Chordism preset's tree, made ChordMonkey's: the Progression value becomes a choice
     // (Chordism's Custom: Diatonic). The other kept values mean the same.
     void fromChordism (juce::ValueTree& tree);
 
-    // Parameters a preset doesn't touch: Enable, Key octave, Analyse, Play, Bind, Bind start,
-    // Keys-Lock and the test rig (Test pattern, Test workspace) (PresetManager).
+    // Parameters a preset doesn't touch: Enable, Key octave, Analyse, Detect, Play, Bind, Bind
+    // start, Keys-Lock and the test rig (Test pattern, Test workspace) (PresetManager).
     bool isPresetParameter (const juce::String& paramId);
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
@@ -107,6 +114,7 @@ namespace chordmonkey::params
         Scale currentScale() const noexcept;
         ChordFxSettings chordFx() const noexcept;
         AnalyseMode analyseMode() const noexcept;
+        DetectMode detectMode() const noexcept;
         bool testWorkspace() const noexcept;
 
     private:
@@ -125,6 +133,7 @@ namespace chordmonkey::params
         std::atomic<float>* bindSourceParam;
         std::atomic<float>* bindStartParam;
         std::atomic<float>* keysLockParam;
+        std::atomic<float>* detectParam;
 
         std::atomic<float>* fxStack;
         std::atomic<float>* fxStrum;

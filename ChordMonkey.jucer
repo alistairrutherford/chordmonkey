@@ -26,6 +26,7 @@
         <FILE id="ccF101" name="ChordEngine.h" compile="0" resource="0" file="Source/core/engine/ChordEngine.h"/>
         <FILE id="ccF102" name="KeyRouter.h" compile="0" resource="0" file="Source/core/engine/KeyRouter.h"/>
         <FILE id="ccF110" name="KeyListener.h" compile="0" resource="0" file="Source/core/engine/KeyListener.h"/>
+        <FILE id="cmF008" name="ChordListener.h" compile="0" resource="0" file="Source/core/engine/ChordListener.h"/>
         <FILE id="csF004" name="MidiEvents.h" compile="0" resource="0" file="Source/core/engine/MidiEvents.h"/>
         <FILE id="csF005" name="Transport.h" compile="0" resource="0" file="Source/core/engine/Transport.h"/>
         <FILE id="csF007" name="VoiceTracker.h" compile="0" resource="0" file="Source/core/engine/VoiceTracker.h"/>
@@ -48,6 +49,7 @@
         <FILE id="cmF003" name="ChordSets.h" compile="0" resource="0" file="Source/core/model/ChordSets.h"/>
         <FILE id="cmF004" name="ChordSetLibrary.h" compile="0" resource="0" file="Source/core/model/ChordSetLibrary.h"/>
         <FILE id="cmF007" name="PatternRender.h" compile="0" resource="0" file="Source/core/midiio/PatternRender.h"/>
+        <FILE id="cmF009" name="Detect.h" compile="0" resource="0" file="Source/core/model/Detect.h"/>
       </GROUP>
       <GROUP id="csGrp4" name="core/midiio">
         <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>

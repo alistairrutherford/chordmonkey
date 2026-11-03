@@ -94,6 +94,8 @@ namespace chordmonkey
         m.workspace = processor.getWorkspace();
         m.playingPattern = processor.playingPattern.load();
         m.playingSlot = processor.playingSlot.load();
+        m.detect = processor.detectMode();
+        m.heardChords = m.detect != params::DetectMode::Off ? processor.heardChords().count : 0;
 
         globals.refresh (m);
         keyboardRow.refresh (m);

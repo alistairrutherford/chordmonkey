@@ -15,6 +15,10 @@
 // key; the guess is published as one packed atomic (keyGuess). Using it (applyGuess) sets Key
 // and Scale on the message thread: from the editor's click, or from the timer when the host has
 // set Analyse to Use guess. Analyse isn't saved with the state.
+//
+// Detect (PLAN.md §3.6, Phase 8): in Capture the engine also groups the input into chords
+// (ChordListener.h), published to the message thread (heardChords); Use result (applyDetect)
+// writes them into the current pattern and sets Key and Scale to the guess. Not saved either.
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -159,6 +163,15 @@ namespace chordmonkey
         // bridge's checks in Live).
         static juce::File heardKeyFile();
 
+        // Detect (message thread). The chords heard in the current (or last) capture, and
+        // applyDetect: with chords, the current pattern becomes them (core/model/Detect.h, in
+        // the key guessed, else the Key), Key and Scale follow a guess, and Detect = Off, as one
+        // set of gestures; returns true. Without chords, Detect = Capture and false.
+        params::DetectMode detectMode() const noexcept { return snapshot.detectMode(); }
+        const HeardChords& heardChords();
+        bool applyDetect();
+        void cancelDetect();             // Detect = Off; the next capture starts empty
+
         // While Test workspace is on, the workspace is loaded from this file whenever it changes
         // (Phase 2, for the bridge's checks in Live): line n is pattern n (A-D) as a progression
         // (ChordSets.h), in the current Key; a blank or unreadable line is an empty pattern, and
@@ -215,6 +228,8 @@ namespace chordmonkey
         Transport lastTransport;
         SnapshotExchange<ChordDisplay> display;
         ChordDisplay lastDisplay;
+        SnapshotExchange<HeardChords> heard;    // audio thread → message thread
+        HeardChords heardScratch, heardCache;    // the audio thread's copy; the message thread's
 
         ExportRecorder recorder;
         bool writeTake (const juce::File& file, juce::String& error) const;
