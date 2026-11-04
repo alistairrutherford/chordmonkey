@@ -99,6 +99,6 @@ namespace chordmonkey::ui
         PlayingKeys playing;
         PianoLayout layout;
         std::array<bool, 128> sounding {}, down {};
-        juce::Font labelFont;             // made once: a new Font on every paint costs a typeface lookup
+        juce::Font labelFont { juce::FontOptions {} };   // made once: a new Font on every paint costs a typeface lookup
     };
 }
