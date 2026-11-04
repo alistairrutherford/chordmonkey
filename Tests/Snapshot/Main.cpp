@@ -1047,15 +1047,19 @@ namespace
     {
         constexpr int instances = 8;
         constexpr double rate = 44100.0;
-        std::cout << "== Phase 8: CPU per instance (" << instances << " instances, " << seconds << " s of audio at 44.1 kHz, 140 BPM, 2-beat loop) ==\n"
+        std::cout << "== CPU per instance (" << instances << " instances, " << seconds << " s of audio at 44.1 kHz, 140 BPM, 2-beat loop) ==\n"
                   << "   scenario         block   mean % of real time   99.9th percentile / worst block (% of a block's duration)\n";
-        const char* names[] = { "idle", "test pattern", "everything on", "listening" };
+        const char* names[] = { "idle", "test pattern", "everything on", "listening", "pattern + style", "detect" };
         double worstMean = 0.0;
-        for (int scenario = 0; scenario < 4; ++scenario)
+        Workspace benchWorkspace;
+        std::string benchError;
+        parseProgression ("I:2 V:2 vi:2 IV:2 ii7:2 V7sus4:2 V7:2 Imaj7:2", 0, benchWorkspace.patterns[0], benchError);
+        for (int scenario = 0; scenario < 6; ++scenario)
             for (const int blockSize : { 32, 128, 512 })
             {
                 std::vector<std::unique_ptr<ChordMonkeyProcessor>> procs;
                 LoopPlayHead head;
+                head.looping = scenario != 4;     // the pattern plays through its 8 slots
                 for (int i = 0; i < instances; ++i)
                 {
                     procs.push_back (std::make_unique<ChordMonkeyProcessor>());
@@ -1068,7 +1072,22 @@ namespace
                         everythingOn (p);
                     if (scenario == 3)
                         set (p, params::analyse, (float) params::AnalyseMode::Listen);   // a tune passing through, analysed
+                    if (scenario == 4)
+                    {
+                        // Phase 2-4: an 8-slot pattern playing in Sixteenths, with the bass, Wide, swing and humanize.
+                        p.setWorkspace (benchWorkspace);
+                        set (p, params::play, 1.0f);
+                        set (p, params::style, 3.0f);   // Sixteenths
+                        set (p, params::bass, (float) (int) BassMode::RootFifth);
+                        set (p, params::voicing, (float) (int) VoicingMode::Wide);
+                        set (p, params::swing, 50.0f);
+                        set (p, params::humanize, 100.0f);
+                        set (p, params::voiceLeading, 1.0f);
+                    }
+                    if (scenario == 5)
+                        set (p, params::detect, (float) params::DetectMode::Capture);   // Phase 8: the tune and chords, captured
                 }
+                int chordAt = -1;
                 // Listening: sixteenth notes up and down a scale (at 140 BPM, 16 a bar).
                 const int sixteenth = (int) (rate * 60.0 / 140.0 / 4.0);
                 int tuneNote = -1;
@@ -1082,7 +1101,7 @@ namespace
                 for (int n = 0; n < numBlocks; ++n)
                 {
                     juce::MidiBuffer tune;
-                    if (scenario == 3)
+                    if (scenario == 3 || scenario == 5)
                         for (int64_t s = ((int64_t) n * blockSize + sixteenth - 1) / sixteenth * sixteenth; s < (int64_t) (n + 1) * blockSize; s += sixteenth)
                         {
                             const int at = (int) (s - (int64_t) n * blockSize);
@@ -1091,6 +1110,17 @@ namespace
                             const int step = (int) ((s / sixteenth) % 14);
                             tuneNote = 60 + scaleOffset (Scale::NaturalMinor, step < 7 ? step : 14 - step);
                             tune.addEvent (juce::MidiMessage::noteOn (1, tuneNote, (juce::uint8) 100), at);
+                            if (scenario == 5 && (s / sixteenth) % 8 == 0)
+                            {
+                                // A triad every half bar under the tune: i iv v VI in A minor.
+                                static constexpr int roots[] = { 45, 50, 52, 41 };
+                                if (chordAt >= 0)
+                                    for (int k : { 0, chordAt == 3 ? 4 : 3, 7 })
+                                        tune.addEvent (juce::MidiMessage::noteOff (1, roots[chordAt] + k), at);
+                                chordAt = (chordAt + 1) % 4;
+                                for (int k : { 0, chordAt == 3 ? 4 : 3, 7 })
+                                    tune.addEvent (juce::MidiMessage::noteOn (1, roots[chordAt] + k, (juce::uint8) 90), at);
+                            }
                         }
                     for (auto& p : procs)
                     {

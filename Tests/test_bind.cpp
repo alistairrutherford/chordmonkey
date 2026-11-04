@@ -498,6 +498,12 @@ static void testFuzz()
             if (chance (0.04)) h.settings.fx.hold = (HoldMode) pick (0, numHoldModes - 1);
             if (chance (0.04)) h.settings.fx.arp = chance (0.5) ? ArpPattern::Off : (ArpPattern) pick (1, numArpPatterns - 1);
             if (chance (0.04)) h.settings.followKeyOctave = ! h.settings.followKeyOctave;
+            if (chance (0.04)) h.settings.capturing = ! h.settings.capturing;      // Phase 8: Detect
+            if (chance (0.03)) h.settings.analysing = ! h.settings.analysing;
+            if (chance (0.03)) h.engine->requestHeardReset();
+            if (chance (0.04)) h.settings.fx.style.style = pick (0, numStyles - 1);   // Phase 4
+            if (chance (0.03)) h.settings.fx.voicing = (VoicingMode) pick (0, numVoicingModes - 1);
+            if (chance (0.03)) h.settings.fx.bass = (BassMode) pick (0, numBassModes - 1);
             if (chance (0.03)) h.playing = ! h.playing;
             if (chance (0.03)) h.ppq = pick (0, 64) * 0.25;
             if (chance (0.05))
@@ -515,6 +521,10 @@ static void testFuzz()
             }
             h.run (h.pos + block, block);
             (void) h.engine->takePatternRequest();
+            HeardChords heard;
+            h.engine->getHeard (heard);
+            if (heard.count < 0 || heard.count > maxHeard)
+                ++dirty;
         }
         h.playing = true;
         h.run (h.pos + 3 * 4096 + 1, 512);
@@ -524,7 +534,7 @@ static void testFuzz()
             first = " (first: run " + std::to_string (r) + ": " + h.rx.describe() + ")";
     }
     check (dirty == 0 && played > 1000, "60 runs of 120 random blocks (Bind, zone start, Keys-Lock, Play, patterns, keys in and around the zone, "
-                                        "Hold, Arp, loops, locates, stops): " + std::to_string (played) + " note-ons, nothing left sounding" + first);
+                                        "Hold, Arp, Style, Voicing, Bass, Detect, Analyse, loops, locates, stops): " + std::to_string (played) + " note-ons, nothing left sounding" + first);
 }
 
 int main()
