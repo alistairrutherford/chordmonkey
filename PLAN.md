@@ -191,20 +191,22 @@ slot → chord → inversion/octave → **Voicing** → voice leading → Stack 
   one loop of the pattern, performance included, or *chords only* with Alt. Rendering offline,
   instead of ChordChimp's "last 32 bars played", means the clip is available before playing.
 
-### 3.7 Parameters (target ≈ 40)
+### 3.7 Parameters (as built: 40)
 
 | Group | Parameters |
 |---|---|
-| Global | `enable`, `key`, `scale`, `chordGroup` (Chord type), `chordOctave` |
+| Global | `enable`, `key`, `scale`, `chordGroup` (Chord type), `chordOctave`, `progression`, `keyOctave` |
 | Workspace | `pattern` (A–D), `play` (Off/On), `bindSource`, `bindStart`, `keysLock` |
 | Voicing | `voicing`, `voiceLeading`, `stack`, `bass` |
-| Performance | `style`, `swing`, `humanize`, `strum`, `strumRate`, `arp`, `arpRate`, `arpRange`, `arpGate`, `repeat`, `repeatRate`, `repeatGate`, `velocity`, `velocityPeak`, `velocityRange`, `hold` |
-| Detect | `detect` (Off / Capture / Use result; not saved) |
-| Test rig | `testPattern`, `testWorkspace` (Phase 2: loads the rig's `Workspace.txt`, one progression per pattern, so the bridge can give the plug-in patterns), `testSlot` (plays slot n at the next beat, for the bridge) |
+| Performance | `style`, `swing`, `humanize`, `strum`, `strumRate`, `arp`, `arpRate`, `arpRange`, `arpGate`, `repeat`, `repeatRate`, `repeatGate`, `seq`, `seqPattern`, `seqSwing`, `seqGate`, `velocity`, `velocityPeak`, `velocityRange`, `hold` |
+| Detection | `analyse` (the key alone: Off / Listen / Use guess), `detect` (Off / Capture / Use result); neither saved |
+| Test rig | `testPattern`, `testWorkspace` (Phase 2: loads the rig's `Workspace.txt`, one progression per pattern, and plays its `Keys.txt` as host MIDI, so the bridge can give the plug-in patterns and keys) |
 
 ChordChimp's IDs are kept for every parameter carried over, so its presets load (unknown IDs
-ignored). `progression`, `seq*` and `keyOctave` are dropped. IDs and choice orders are fixed once
-Phase 0 ships: **append only**.
+ignored). The plan was to drop `progression`, `seq*` and `keyOctave`; they were **kept** (§9,
+question 5), so ChordChimp's presets and the palette keyboard work unchanged. The planned
+`testSlot` wasn't needed: `Keys.txt` plays Bind keys instead. IDs and choice orders are fixed:
+**append only** (Keys-Lock's sixth choice, Phase 9, was appended).
 
 ---
 
@@ -359,7 +361,7 @@ Inherited from ChordChimp, plus the new parts:
 | Workspace edits while playing cause clicks or stuck notes | Swap the whole pattern table at a slot boundary; the `VoiceTracker` ends voices of a slot that disappears; covered by the fuzz |
 | Bound key "jump" while playing feels late (next beat) | Option *Jump: next beat / next 1/16 / immediately* if it feels wrong in Live |
 | The 64-parameter budget | Workspace is state, not parameters; ≈ 40 planned leaves room |
-| Chord recognition on real playing (rolled chords, pedal) | 60 ms grouping window, sustain-pedal aware, tested on recorded takes; *Use result* is a separate step, so a bad capture is easy to throw away |
+| Chord recognition on real playing (rolled chords, pedal) | As built (Phase 8): a 60 ms grouping window, rolls gathered while each note follows within 120 ms, melody notes ignored, repeated chords merged; tested on synthetic sloppy takes and a clip in Live. **Not** sustain-pedal aware: notes held only by the pedal end at their key release. *Use result* is a separate step, so a bad capture is easy to throw away |
 | Scope creep toward full Scaler | §1's out-of-scope list; P3 items only after Phase 10 |
 | Clean-room line | Our own chord-set data, style tables, names and artwork; no Scaler assets or text in the repo |
 
@@ -367,15 +369,25 @@ Inherited from ChordChimp, plus the new parts:
 
 ## 9. Open questions
 
-1. **Bind layout:** one octave (8 slots + 4 pattern keys) as planned, or Scaler's "all keys" option
-   (12 slots per octave)?
-2. **Keys-Lock without Bind:** should Keys-Lock cover the whole keyboard when Bind is off? (Plan:
-   yes; Bind *Off* is a `bindSource` choice.)
-3. **Slots per pattern:** 8 (planned) or 16?
-4. **Preview sound:** is a small built-in synth in the Standalone worth having, so the editor
-   can be tried without Live?
-5. **ChordChimp's Progression and Step Seq:** dropped here (chord sets and styles replace them).
-   Keep them instead, for ChordChimp preset compatibility?
+Answered by the build:
+
+1. **Bind layout:** one octave from *Bind start*, as planned (white keys slots 1–8, C# D# F# G#
+   patterns A–D, A# silence), plus a fourth Bind choice, **All keys** (the default): ChordChimp's
+   whole keyboard, every white key its palette chord and the black keys the borrowed ones (Phase 3).
+2. **Keys-Lock without Bind:** yes: with Bind *Off*, Keys-Lock covers every key (Phase 3).
+5. **ChordChimp's Progression and Step seq:** kept, with Key octave, so ChordChimp's presets and
+   keyboard work unchanged; the styles sit beside Step seq rather than replacing it (Phase 4).
+
+Still open:
+
+3. **Slots per pattern:** 8 as built. 16 would touch the model and its saved text, the player,
+   the panel's layout, Bind (one octave holds 8 slots), Detect and Drag MIDI.
+4. **Preview sound:** no built-in synth; the Standalone sends MIDI only. A small one would let the
+   editor be tried without Live.
+6. **Sustain pedal in Detect:** CC64 isn't read, so a chord held by the pedal ends at its key
+   release; Detect would need to hold pedalled notes until the pedal lifts.
+7. **Alt-drag (chords only):** the one feature not checked in Live, because a synthetic Alt key
+   doesn't reach the plug-in; its render is covered by `test_render`.
 
 ---
 
