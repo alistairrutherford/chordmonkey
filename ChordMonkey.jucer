@@ -50,6 +50,7 @@
         <FILE id="cmF004" name="ChordSetLibrary.h" compile="0" resource="0" file="Source/core/model/ChordSetLibrary.h"/>
         <FILE id="cmF007" name="PatternRender.h" compile="0" resource="0" file="Source/core/midiio/PatternRender.h"/>
         <FILE id="cmF009" name="Detect.h" compile="0" resource="0" file="Source/core/model/Detect.h"/>
+        <FILE id="cmF010" name="Substitutes.h" compile="0" resource="0" file="Source/core/model/Substitutes.h"/>
       </GROUP>
       <GROUP id="csGrp4" name="core/midiio">
         <FILE id="csF052" name="MidiFile.h" compile="0" resource="0" file="Source/core/midiio/MidiFile.h"/>

@@ -190,6 +190,54 @@ static void testKeysLock()
         }
     }
     check (wrongChord == 0, "20,000 random chords and notes: Chord notes always the nearest chord note (" + std::to_string (wrongChord) + " wrong)");
+
+    // Chord extensions (Phase 9): the chord with its 9th, 11th and 13th from the scale.
+    auto pcs = [] (std::initializer_list<int> l) { unsigned m = 0; for (int pc : l) m |= 1u << pc; return m; };
+    struct Ext { const char* what; unsigned chord; int key; Scale scale; unsigned want; };
+    const std::vector<Ext> exts {
+        { "G in C major: + A C E", pcs ({ 7, 11, 2 }), 0, Scale::Major, pcs ({ 7, 11, 2, 9, 0, 4 }) },
+        { "Dm in C major: + E G B", pcs ({ 2, 5, 9 }), 0, Scale::Major, pcs ({ 2, 5, 9, 4, 7, 11 }) },
+        { "G7 in C major: + A C E", pcs ({ 7, 11, 2, 5 }), 0, Scale::Major, pcs ({ 7, 11, 2, 5, 9, 0, 4 }) },
+        { "Bdim in C major: + C (b9) E G (b13)", pcs ({ 11, 2, 5 }), 0, Scale::Major, pcs ({ 11, 2, 5, 0, 4, 7 }) },
+        { "Bb (borrowed) in C major: + C E (#11) G", pcs ({ 10, 2, 5 }), 0, Scale::Major, pcs ({ 10, 2, 5, 0, 4, 7 }) },
+        { "E7 in A harmonic minor: + F (b9) A C (b13)", pcs ({ 4, 8, 11, 2 }), 9, Scale::HarmonicMinor, pcs ({ 4, 8, 11, 2, 5, 9, 0 }) },
+        { "Cmaj7 in C major: + D F A", pcs ({ 0, 4, 7, 11 }), 0, Scale::Major, pcs ({ 0, 4, 7, 11, 2, 5, 9 }) },
+    };
+    std::string extBad;
+    for (const auto& e : exts)
+        if (keyslock::extendedMask (e.chord, e.key, e.scale) != e.want && extBad.empty())
+            extBad = std::string (" (") + e.what + ")";
+    check (extBad.empty(), "Chord extensions by hand: G, Dm, G7, Bdim, borrowed Bb in C major; E7 in A harmonic minor; Cmaj7" + extBad);
+    Notes extRow;
+    for (int n : { 60, 62, 64, 65, 67, 69, 71, 61 })
+        extRow.push_back (keysLockNote (n, KeysLockMode::ChordExtensions, 0, Scale::Major, dm));
+    check (extRow == Notes { 59, 62, 64, 65, 67, 69, 71, -1 }, "Chord extensions on Dm in C: C plays B (the 13th), the rest as written, black keys silent: " + list (extRow));
+    int wrongExt = 0;
+    for (int i = 0; i < 20000; ++i)
+    {
+        const unsigned mask = (unsigned) (rng() & 0xfffu) | (1u << (rng() % 12));
+        const int key = (int) (rng() % 12);
+        const Scale s = (Scale) (rng() % (unsigned) numScales);
+        const int n = (int) (rng() % 128);
+        const unsigned ext = keyslock::extendedMask (mask, key, s);
+        const int r = keysLockNote (n, KeysLockMode::ChordExtensions, key, s, mask);
+        bool ok = (ext & mask) == mask && __builtin_popcount (ext & ~mask) <= 3;
+        if (keys::whiteLetter (n % 12) < 0)
+            ok = ok && r == -1;
+        else
+        {
+            int best = -1;
+            for (int d = 0; d < 12 && best < 0; ++d)
+            {
+                if (n + d <= 127 && ((ext >> ((n + d) % 12)) & 1u)) best = n + d;
+                else if (n - d >= 0 && ((ext >> ((n - d) % 12)) & 1u)) best = n - d;
+            }
+            ok = ok && r == best;
+        }
+        wrongExt += ok ? 0 : 1;
+    }
+    check (wrongExt == 0, "20,000 random chords, keys, scales and notes: Chord extensions keeps the chord, adds at most three notes, and plays the nearest ("
+                              + std::to_string (wrongExt) + " wrong)");
 }
 
 static void testPaletteBind()
@@ -236,6 +284,15 @@ static void testPaletteBind()
     h.run (h.at (t + 3.0), 64);
     check (onsAt (h, h.at (t)).empty() && onsAt (h, h.at (t + 2.0)) == Notes { 62 } && h.clean(),
            "Keys-Lock above the zone: C# silent in C major; with Dm held, C3 plays D3; everything ends with its key");
+    t += 3.0;
+    h.key (t, 38, true);                         // Dm again: Chord extensions adds E G B
+    h.run (h.at (t + 0.5), 64);
+    h.settings.keysLock = KeysLockMode::ChordExtensions;
+    h.key (t + 1.0, 60, true);
+    h.key (t + 1.5, 60, false);
+    h.key (t + 1.5, 38, false);
+    h.run (h.at (t + 2.0), 64);
+    check (onsAt (h, h.at (t + 1.0)) == Notes { 59 } && h.clean(), "Chord extensions above the zone: with Dm held, C3 plays B2 (its 13th)");
 }
 
 static void testWorkspaceBind()

@@ -2,6 +2,7 @@
 #include "Theme.h"
 #include "../plugin/ChordMonkeyProcessor.h"
 #include "../core/model/ChordSets.h"
+#include "../core/model/Substitutes.h"
 
 namespace chordmonkey::ui
 {
@@ -241,6 +242,19 @@ namespace chordmonkey::ui
         });
     }
 
+    void WorkspacePanel::setSlotChord (int slot, const WorkspaceChord& chord)
+    {
+        edit ([&] (Pattern& p)
+        {
+            if (slot >= 0 && slot < p.size() && ! chord.empty())
+            {
+                auto& s = p.slots[(size_t) slot];
+                s.chord = chord;
+                s.inversion = (int8_t) juce::jlimit (0, juce::jmin (maxSlotInversion, chord.size - 1), (int) s.inversion);
+            }
+        });
+    }
+
     void WorkspacePanel::duplicateSlot (int slot)
     {
         edit ([&] (Pattern& p)
@@ -321,6 +335,15 @@ namespace chordmonkey::ui
         m.addSubMenu ("Length", length);
         m.addSubMenu ("Inversion", inversion);
         m.addSubMenu ("Octave", octave);
+
+        // Substitutes (Phase 9): the chord replaced, its length, octave and inversion kept.
+        juce::PopupMenu subs;
+        for (const auto& sub : substitutesFor (s.chord, model.settings.key, model.settings.scale))
+        {
+            const juce::String name (namePatternSlot (makePatternSlot (sub.chord), model.settings.key, model.settings.scale).text());
+            subs.addItem (name + "   " + sub.reason, [this, slot, chord = sub.chord] { setSlotChord (slot, chord); });
+        }
+        m.addSubMenu ("Substitutes", subs, subs.getNumItems() > 0);
         m.addSeparator();
         m.addItem ("Duplicate", ! p.full(), false, [this, slot] { duplicateSlot (slot); });
         m.addItem ("Delete", [this, slot] { deleteSlot (slot); });

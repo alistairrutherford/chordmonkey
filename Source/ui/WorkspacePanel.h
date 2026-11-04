@@ -12,7 +12,7 @@
 //
 // Getting chords in: drag a chord pad onto a slot (replaces its chord) or past the last one
 // (appends), or right-click a pad. Slots: click to hear one; drag to reorder; right-click for
-// length, inversion, octave, duplicate and delete. Every change goes through the processor's
+// length, inversion, octave, substitutes (Phase 9), duplicate and delete. Every change goes through the processor's
 // setWorkspace (message thread); the actions are public so the snapshot test can drive them.
 #pragma once
 
@@ -57,6 +57,7 @@ namespace chordmonkey::ui
         void setSlotLength (int slot, int halfBeats);
         void setSlotInversion (int slot, int inversion);
         void setSlotOctave (int slot, int octave);
+        void setSlotChord (int slot, const WorkspaceChord&);   // a substitute: length, octave and inversion kept
         void duplicateSlot (int slot);
         void deleteSlot (int slot);
         void transposeToKey();

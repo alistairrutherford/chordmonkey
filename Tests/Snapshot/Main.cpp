@@ -44,6 +44,8 @@
 //                 through, no allocation, the click that writes the pattern and the key) and
 //                 from the host's thread (Capture, Use result seen by the timer); nothing heard
 //                 keeps capturing; the cross; not saved, not in presets
+//  11. Phase 9    a substitute from the slot menu's list replaces a chord (length, octave and
+//                 inversion kept); Keys-Lock's Chord extensions through processBlock
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -59,6 +61,7 @@
 #include "../../Source/ui/ChordMonkeyEditor.h"
 #include "../../Source/core/model/ChordSets.h"
 #include "../../Source/core/model/ChordSetLibrary.h"
+#include "../../Source/core/model/Substitutes.h"
 #include <chrono>
 #include <iostream>
 #include <pthread.h>
@@ -1687,6 +1690,44 @@ namespace
         editor.reset();
     }
 
+    void testPhase9()
+    {
+        std::cout << "== substitutes and Chord extensions (Phase 9) ==\n";
+        auto p = std::make_unique<ChordMonkeyProcessor>();
+        p->prepareToPlay (48000.0, 512);
+        auto editor = std::unique_ptr<ChordMonkeyEditor> (dynamic_cast<ChordMonkeyEditor*> (p->createEditor()));
+        auto& panel = editor->getWorkspacePanel();
+        Workspace w;
+        std::string error;
+        parseProgression ("I:2 V7", 0, w.patterns[0], error);
+        w.patterns[0].slots[0].inversion = 2;
+        w.patterns[0].slots[0].octave = 1;
+        p->setWorkspace (w);
+        editor->refreshNow();
+        const auto subsOfC = substitutesFor (w.patterns[0].slots[0].chord, 0, Scale::Major);
+        const auto subsOfG7 = substitutesFor (w.patterns[0].slots[1].chord, 0, Scale::Major);
+        panel.setSlotChord (0, subsOfC[0].chord);         // Am
+        panel.setSlotChord (1, subsOfG7.back().chord);    // Db7
+        const auto after = p->getWorkspace().patterns[0];
+        const auto name = [&] (int i) { return namePatternSlot (after.slots[(size_t) i], 0, Scale::Major).text(); };
+        check (subsOfC.size() == 7 && name (0) == "Am/E" && after.slots[0].halfBeats == 4 && after.slots[0].octave == 1 && after.slots[0].inversion == 2
+                   && name (1) == "Db7",
+               "a substitute replaces the slot's chord, keeping its length, octave and inversion: C/G -> " + juce::String (name (0))
+                   + ", G7 -> " + juce::String (name (1)));
+
+        // Chord extensions: the sixth Keys-Lock choice; with Bind Palette and Dm held, C3 plays B2.
+        auto* lock = dynamic_cast<juce::AudioParameterChoice*> (p->state.getParameter (params::keysLock));
+        set (*p, params::bindSource, (float) BindSource::Palette);
+        set (*p, params::keysLock, (float) KeysLockMode::ChordExtensions);
+        block (*p, { juce::MidiMessage::noteOn (1, 38, (juce::uint8) 100) });
+        const auto out = block (*p, { juce::MidiMessage::noteOn (1, 60, (juce::uint8) 100) });
+        check (lock != nullptr && lock->choices.size() == numKeysLockModes && lock->choices[5] == "Chord extensions"
+                   && noteOns (out) == std::vector<int> { 59 },
+               "Keys-Lock's sixth choice is Chord extensions; with Dm held, C3 plays its 13th, B2 (" + juce::String ((int) noteOns (out).size()) + " note)");
+        block (*p, { juce::MidiMessage::noteOff (1, 60), juce::MidiMessage::noteOff (1, 38) });
+        editor.reset();
+    }
+
     void testWorkspacePanel()
     {
         std::cout << "== workspace panel (Phase 6) ==\n";
@@ -2026,6 +2067,7 @@ int main (int argc, char** argv)
     testChordSetsAndPresets();
     testWorkspacePanel();
     testDetect();
+    testPhase9();
 
     std::cout << (failures == 0 ? "\nsnapshot: all passed\n" : "\n*** snapshot: " + std::to_string (failures) + " failure(s)\n");
     return failures == 0 ? 0 : 1;

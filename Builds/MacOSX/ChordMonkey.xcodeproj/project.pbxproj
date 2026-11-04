@@ -166,6 +166,7 @@
 		A7A984B0BA0AA3B6E376666F /* ChordSetManager.h */ /* ChordSetManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ChordSetManager.h; path = ../../Source/plugin/ChordSetManager.h; sourceTree = SOURCE_ROOT; };
 		A8E511D8F716E69ABC392D73 /* ChordSetManager.cpp */ /* ChordSetManager.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ChordSetManager.cpp; path = ../../Source/plugin/ChordSetManager.cpp; sourceTree = SOURCE_ROOT; };
 		A907CE926F68CD87E11065EB /* KeyProfiles.h */ /* KeyProfiles.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = KeyProfiles.h; path = ../../Source/core/theory/KeyProfiles.h; sourceTree = SOURCE_ROOT; };
+		AAEC58C04FD14B6811D0D6FB /* Substitutes.h */ /* Substitutes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Substitutes.h; path = ../../Source/core/model/Substitutes.h; sourceTree = SOURCE_ROOT; };
 		AC87D903488D955D25F75F7E /* Shared Code */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libChordMonkey.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF669B83E6FCB32139495FEF /* Standalone Plugin */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChordMonkey.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B7ADBB85E69B7448F67888BD /* include_juce_audio_processors.mm */ /* include_juce_audio_processors.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_audio_processors.mm; path = ../../JuceLibraryCode/include_juce_audio_processors.mm; sourceTree = SOURCE_ROOT; };
@@ -293,6 +294,7 @@
 				3F4B6874A97818F9497E84E7,
 				39051CDEF45A8A9E2C09CBB9,
 				3BBE94F34E8549609C828253,
+				AAEC58C04FD14B6811D0D6FB,
 			);
 			name = core/model;
 			sourceTree = "<group>";
