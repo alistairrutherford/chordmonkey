@@ -78,7 +78,15 @@ static void testVoicings()
     bassNotes (BassMode::Root, 57, 9, b);
     const int am = b[0];
     bassNotes (BassMode::Root, 52, 0, b);
-    check (am == 45 && b[0] == 36, "Bass on Am (57): A1 (45); on C/E (lowest 52): C1 (36), the root an octave below or more");
+    const int rootOnly = b[0];
+    const int slashRoot = bassNotes (BassMode::Root, 52, 0, b, 4);
+    const int ce = b[0];
+    const int slashFifth = bassNotes (BassMode::RootFifth, 52, 0, b, 4);
+    const int ce5 = b[0];
+    const int rootFifth = bassNotes (BassMode::RootFifth, 55, 7, b, 7);
+    check (am == 45 && rootOnly == 36 && slashRoot == 1 && ce == 40 && slashFifth == 1 && ce5 == 40 && rootFifth == 2 && b[0] == 43 && b[1] == 50,
+           "Bass on Am (57): A1 (45); with no bass given, the root (C under 52: 36); on C/E (written bass E): E1 (40), and Root + 5th "
+           "plays it alone; on G with its bass G: G1 and D2 (43 50)");
     check (bassNotes (BassMode::Root, 10, 0, b) == 0, "no bass below MIDI 0");
 }
 
@@ -282,6 +290,51 @@ static void testStylesInTheEngine()
     }
 }
 
+// Bass follows the chord's written bass (a slash or inverted slot, an inverted Chord Group).
+static void testSlashBass()
+{
+    std::cout << "== Bass under inversions and slash chords ==\n";
+    const auto onsAt = [] (const Host& h, int64_t at)
+    {
+        std::vector<int> n;
+        for (const auto& x : h.hits)
+            if (x.on && x.sample == at)
+                n.push_back (x.note);
+        std::sort (n.begin(), n.end());
+        return n;
+    };
+    for (BassMode mode : { BassMode::Root, BassMode::RootFifth })
+    {
+        Host h (48000.0, 120.0);
+        Workspace ws;
+        ws.patterns[0] = progression ("I IV V");
+        ws.patterns[0].slots[0].inversion = 1;          // C/E
+        ws.patterns[0].slots[2].inversion = 2;          // G/D
+        h.engine->setWorkspace (ws);
+        h.settings.play = true;
+        h.settings.fx.bass = mode;
+        h.run (h.at (11.5), 256);
+        const auto ce = onsAt (h, h.at (0)), f = onsAt (h, h.at (4)), gd = onsAt (h, h.at (8));
+        const bool fifth = mode == BassMode::RootFifth;
+        check (ce == std::vector<int> { 40, 52, 55, 60 } && f == (fifth ? std::vector<int> { 41, 48, 53, 57, 60 } : std::vector<int> { 41, 53, 57, 60 })
+                   && gd == std::vector<int> { 50, 62, 67, 71 },
+               std::string (fifth ? "Root + 5th" : "Root") + ": C/E gets E1 (40) under it, F its F1" + (fifth ? " and C2" : "")
+                   + ", G/D (62 67 71) its D2 (50): a bass that isn't the root plays alone");
+    }
+    {
+        // The palette: Chord Group 1st Inversion puts the root up, so C plays E G C over E.
+        Host h (48000.0, 120.0);
+        h.playing = false;
+        h.settings.group = ChordGroup::FirstInversion;
+        h.settings.fx.bass = BassMode::Root;
+        h.key (0.0, 48, true);
+        h.key (0.5, 48, false);
+        h.run (h.at (1.0), 64);
+        const auto c = onsAt (h, 0);
+        check (! c.empty() && c[0] % 12 == 4 && c.size() >= 2 && c[1] - c[0] >= 12, "a 1st Inversion palette chord gets its written bass, E, an octave or more under it");
+    }
+}
+
 static void testFuzz()
 {
     std::cout << "== stuck-note fuzz ==\n";
@@ -344,6 +397,7 @@ int main()
     testVoicings();
     testStyleTables();
     testStylesInTheEngine();
+    testSlashBass();
     testFuzz();
     return testutil::finish ("test_style");
 }

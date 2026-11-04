@@ -21,7 +21,7 @@ through the Ableton MCP bridge and by hand.
   it, drag it to reorder, right-click it for its length, inversion, octave, **substitutes**,
   duplicate and delete. **Pattern ▾** transposes to the Key, copies and clears.
 - **Play.** The current pattern plays in time with Live, through the performance: Voicing (Close,
-  Open, Spread, Wide), Bass (root, root + 5th), 17 rhythm **Styles** with Swing and Humanize, and
+  Open, Spread, Wide), Bass (the chord's bass note, E under C/E, with or without the root's 5th), 17 rhythm **Styles** with Swing and Humanize, and
   ChordChimp's Strum, Arp, Repeat, Step seq, Velocity, Hold and voice leading. A pattern change
   waits for the next bar.
 - **Chord sets.** 41 factory progressions in six categories (Pop, Rock, Jazz & Soul, EDM & House,

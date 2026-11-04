@@ -441,6 +441,10 @@ namespace chordmonkey
                 return {};
             ChordNotes notes = slot < numChordSlots ? chordNotes (chords[(size_t) slot], context)
                                                     : patternChords[(size_t) (slot - numChordSlots)];
+            int lowestWritten = 128;      // the chord's bass as written (its notes aren't in pitch order)
+            for (const uint8_t n : notes)
+                lowestWritten = n < lowestWritten ? n : lowestWritten;
+            const int bassPc = lowestWritten < 128 ? lowestWritten % 12 : -1;
             notes = applyVoicing (notes, fx.voicing);
             if (fx.voiceLeading == VoiceLeadingMode::Smooth)
                 notes = leadVoicing (notes, haveLed ? &led : nullptr, context);
@@ -453,7 +457,7 @@ namespace chordmonkey
             for (const uint8_t n : stacked)
                 if (n + shift >= 0 && n + shift <= 127)
                     moved.notes[(size_t) moved.size++] = (uint8_t) (n + shift);
-            return withBass (moved, rootOf (slot));
+            return withBass (moved, rootOf (slot), bassPc);
         }
 
         // The root pitch class of chord slot `slot`.
@@ -465,11 +469,11 @@ namespace chordmonkey
             return (((context.key + scaleOffset (context.scale, c.degree) + c.steps[0].accidental) % 12) + 12) % 12;
         }
 
-        // `v` (ascending) with Bass's notes under it.
-        VoicedNotes withBass (const VoicedNotes& v, int rootPc) const noexcept
+        // `v` (ascending) with Bass's notes under it: the written bass `bassPc` (-1: the root).
+        VoicedNotes withBass (const VoicedNotes& v, int rootPc, int bassPc = -1) const noexcept
         {
             int bass[2] {};
-            const int nb = v.size > 0 ? bassNotes (fx.bass, v[0], rootPc, bass) : 0;
+            const int nb = v.size > 0 ? bassNotes (fx.bass, v[0], rootPc, bass, bassPc) : 0;
             if (nb == 0)
                 return v;
             VoicedNotes withIt;

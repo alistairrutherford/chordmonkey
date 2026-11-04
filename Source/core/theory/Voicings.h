@@ -7,8 +7,10 @@
 //   Wide     drop-2 and drop-4: the second- and fourth-highest notes an octave down (a triad:
 //            drop-2 only)
 //
-//   Bass     Off · Root (the chord's root, in the octave below the voicing's lowest note) ·
-//            Root + 5th (and the fifth above that root)
+//   Bass     Off · Root (the chord's bass note, in the octave below the voicing's lowest note:
+//            its root, or for an inversion or a slash chord its written bass, E under C/E) ·
+//            Root + 5th (and the fifth above it where the bass is the root; a bass that isn't
+//            the root plays alone, since its fifth needn't be in the chord)
 //
 // Notes that would leave 0..127 stay where they were; a repeated pitch is kept once.
 #pragma once
@@ -94,20 +96,22 @@ namespace chordmonkey
         return notes;
     }
 
-    // The bass notes for a chord whose lowest note is `lowest` and root pitch class `rootPc`:
-    // `out` gets 0, 1 or 2 notes (root, then fifth), each below `lowest`.
-    inline int bassNotes (BassMode mode, int lowest, int rootPc, int (&out)[2]) noexcept
+    // The bass notes for a chord whose lowest note is `lowest`, root pitch class `rootPc` and
+    // written bass pitch class `bassPc` (-1: the root): `out` gets 0, 1 or 2 notes (the bass,
+    // then the root's fifth), each below `lowest`.
+    inline int bassNotes (BassMode mode, int lowest, int rootPc, int (&out)[2], int bassPc = -1) noexcept
     {
         if (mode == BassMode::Off || lowest < 0 || rootPc < 0)
             return 0;
+        const int pc = bassPc < 0 ? rootPc : bassPc;
         const int top = lowest - 12;
-        const int root = top - (((top - rootPc) % 12) + 12) % 12;   // the highest root at or below top
+        const int bass = top - (((top - pc) % 12) + 12) % 12;   // the highest at or below top
         int n = 0;
-        if (root >= 0)
+        if (bass >= 0)
         {
-            out[n++] = root;
-            if (mode == BassMode::RootFifth && root + 7 < lowest)
-                out[n++] = root + 7;
+            out[n++] = bass;
+            if (mode == BassMode::RootFifth && pc % 12 == rootPc % 12 && bass + 7 < lowest)
+                out[n++] = bass + 7;
         }
         return n;
     }
