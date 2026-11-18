@@ -5,6 +5,8 @@ Scaler 2: a scale's chords, chord sets, patterns of chords that play in time wit
 Keys-Lock, Detect, substitutes, and drag-out to MIDI clips. It's a fork of
 [ChordChimp](../chordchimp); the plan and its status are in [PLAN.md](PLAN.md).
 
+**Version 1.1.0** (2026-11-18). What changed: [CHANGELOG.md](CHANGELOG.md).
+
 ![The ChordMonkey editor, with the Info View along the bottom describing Bind](docs/editor.png)
 
 Point at any control, pad, card or the workspace and the **Info View** strip along the bottom of the
