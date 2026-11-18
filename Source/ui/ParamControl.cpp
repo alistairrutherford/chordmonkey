@@ -105,6 +105,7 @@ namespace chordmonkey::ui
     StepSeqView::StepSeqView (juce::Colour a) : accent (a), numberFont (font (10.0f))
     {
         setTooltip ("The chosen pattern's steps");
+        setComponentID ("display.steps");         // its Info View entry
     }
 
     void StepSeqView::setSteps (uint16_t mask)

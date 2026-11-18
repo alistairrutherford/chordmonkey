@@ -2,7 +2,7 @@
 // host and checks:
 //
 //   1. snapshots  the editor in a fixed state (C major, the Pop progression, effects, keys held)
-//                 at its default size (780×640), its smallest (720×600, keyboard hidden) and a
+//                 at its default size (780×784), its smallest (720×744, keyboard hidden) and a
 //                 large one (1200×800), each compared with Tests/fixtures/snapshot/*.png (at most
 //                 0.5% of pixels may differ by more than 24 levels: font rendering moves a little
 //                 between macOS versions); clicking a chord pad plays its chord
@@ -46,6 +46,10 @@
 //                 keeps capturing; the cross; not saved, not in presets
 //  11. Phase 9    a substitute from the slot menu's list replaces a chord (length, octave and
 //                 inversion kept); Keys-Lock's Chord extensions through processBlock
+//  12. Info View  the strip along the bottom (as NoteCap's): every parameter has a short entry;
+//                 every control, display, card and the workspace can be pointed at (default and
+//                 smallest size); the strip itself isn't one; leaving the editor shows the hint; a
+//                 snapshot of it showing an entry
 //
 //   ChordMonkeySnapshot <fixtures dir> <output dir> [--update | --no-pixels]
 //   ChordMonkeySnapshot --bench [seconds]
@@ -1980,6 +1984,70 @@ int main (int argc, char** argv)
             }
         check (total == params::numParameters && missing.isEmpty(), juce::String (total) + " parameters, " + juce::String (missing.size()) + " without a control (Test pattern is Live's)"
                                       + (missing.isEmpty() ? juce::String() : ": " + missing.joinIntoString (", ")));
+
+        std::cout << "== Info View ==\n";
+        {
+            juce::StringArray noEntry, tooLong;
+            for (auto* param : processor->getParameters())
+                if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (param))
+                    if (ui::InfoView::titleFor (withId->paramID).isEmpty() || ui::InfoView::textFor (withId->paramID).isEmpty())
+                        noEntry.add (withId->paramID);
+            for (const auto& k : ui::InfoView::keys())
+                if (ui::InfoView::textFor (k).length() > 200 || ui::InfoView::titleFor (k).length() > 24)
+                    tooLong.add (k);
+            check (noEntry.isEmpty(), "every parameter has an Info View entry" + (noEntry.isEmpty() ? juce::String() : ": none for " + noEntry.joinIntoString (", ")));
+            check (tooLong.isEmpty(), "entries stay brief (titles at most 24 characters, text at most 200)"
+                                          + (tooLong.isEmpty() ? juce::String() : ": " + tooLong.joinIntoString (", ")));
+
+            // Everything in the table can be pointed at but the test rig (Live's), at the
+            // default size and the smallest (keyboard hidden there: its entry is checked at the default).
+            for (const bool small : { false, true })
+            {
+                editor->setSize (small ? ChordMonkeyEditor::minWidth : ChordMonkeyEditor::defaultWidth,
+                                 small ? ChordMonkeyEditor::minHeight : ChordMonkeyEditor::defaultHeight);
+                editor->showKeyboard (! small);
+                editor->refreshNow();
+                juce::StringArray found, unreachable;
+                for (int y = 0; y < editor->getHeight(); y += 2)
+                    for (int x = 0; x < editor->getWidth(); x += 2)
+                        found.addIfNotAlreadyThere (editor->infoKeyAt ({ x, y }));
+                for (const auto& k : ui::InfoView::keys())
+                    if (! found.contains (k) && k != params::testPattern && k != params::testWorkspace
+                        && k != "ui.detectCancel"                       // only while Detect captures
+                        && ! (small && k == "display.keyboard"))
+                        unreachable.add (k);
+                const auto strip = editor->infoView().getBounds();
+                check (unreachable.isEmpty(), juce::String (small ? "smallest size" : "default size") + ": everything described can be pointed at ("
+                                                  + juce::String (found.size() - 1) + " keys)" + (unreachable.isEmpty() ? juce::String() : "; not: " + unreachable.joinIntoString (", ")));
+                check (strip.getBottom() == editor->getHeight() - 10 && strip.getWidth() == editor->getWidth() - 24 && editor->infoKeyAt (strip.getCentre()).isEmpty(),
+                       "the strip runs along the bottom and isn't itself something to point at");
+            }
+            editor->setSize (ChordMonkeyEditor::defaultWidth, ChordMonkeyEditor::defaultHeight);
+            editor->showKeyboard (true);
+            editor->refreshNow();
+
+            // Pointing shows the entry; leaving the editor shows the hint.
+            auto& pads = editor->getChordPads();
+            const auto padCentre = editor->getLocalPoint (&pads, pads.padBounds (0).getCentre().toInt());
+            editor->showInfoAt (padCentre);
+            check (editor->infoView().shownKey() == "display.pads" && editor->infoView().shownTitle() == "Chord pads", "pointing at a pad shows the pads' entry");
+            auto source = juce::Desktop::getInstance().getMainMouseSource();
+            const auto now = juce::Time::getCurrentTime();
+            const juce::MouseEvent away (source, { -5.0f, -5.0f }, {}, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, editor, editor, now, { -5.0f, -5.0f }, now, 1, false);
+            editor->mouseExit (away);
+            check (editor->infoView().shownKey().isEmpty() && editor->infoView().shownText() == ui::InfoView::hint(), "leaving the editor shows the hint");
+
+            // The snapshot: pointing at Bind.
+            juce::Point<int> bindAt;
+            for (int y = 0; y < editor->getHeight() && bindAt.isOrigin(); y += 2)
+                for (int x = 0; x < editor->getWidth() && bindAt.isOrigin(); x += 2)
+                    if (editor->infoKeyAt ({ x, y }) == params::bindSource)
+                        bindAt = { x + 6, y + 6 };
+            editor->showInfoAt (bindAt);
+            check (editor->infoView().shownKey() == params::bindSource, "pointing at Bind shows its entry");
+            snapshot (*editor, "editor-info", fixtures, out, update);
+            editor->showInfoAt ({ -1, -1 });
+        }
     }
 
     std::cout << "== state ==\n";
@@ -2018,12 +2086,12 @@ int main (int argc, char** argv)
         std::unique_ptr<juce::AudioProcessorEditor> first (sized->createEditorIfNeeded());
         sized->removeListener (&watch);
         check (first->getWidth() == ChordMonkeyEditor::defaultWidth && first->getHeight() == ChordMonkeyEditor::defaultHeight && ! watch.changed,
-               "a new instance's editor opens at the default size (780 x 640) and doesn't report a change");
-        first->setSize (919, 689);
+               "a new instance's editor opens at the default size (780 x 784) and doesn't report a change");
+        first->setSize (919, 829);
         close (*sized, first);
 
         std::unique_ptr<juce::AudioProcessorEditor> second (sized->createEditorIfNeeded());
-        check (second->getWidth() == 919 && second->getHeight() == 689, "a reopened editor has the size the last one was left at (919 x 689)");
+        check (second->getWidth() == 919 && second->getHeight() == 829, "a reopened editor has the size the last one was left at (919 x 829)");
         close (*sized, second);
 
         juce::MemoryBlock state;
@@ -2034,7 +2102,7 @@ int main (int argc, char** argv)
         reopened->addListener (&reopenWatch);
         std::unique_ptr<juce::AudioProcessorEditor> third (reopened->createEditorIfNeeded());
         reopened->removeListener (&reopenWatch);
-        check (third->getWidth() == 919 && third->getHeight() == 689 && ! reopenWatch.changed,
+        check (third->getWidth() == 919 && third->getHeight() == 829 && ! reopenWatch.changed,
                "after a save and restore the editor opens at the saved size and doesn't report a change");
         third->setSize (ChordMonkeyEditor::minWidth, ChordMonkeyEditor::minHeight);
         close (*reopened, third);

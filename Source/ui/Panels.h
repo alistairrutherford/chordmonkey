@@ -114,6 +114,8 @@ namespace chordmonkey::ui
         void paint (juce::Graphics&) override;
         void resized() override;
 
+        // The Info View's key for a point on the panel itself: the card it is on.
+        juce::String infoKeyAt (juce::Point<int>) const;
         // The height the cards need at this width (the editor sizes the chord pads around it).
         static int preferredHeight();
 

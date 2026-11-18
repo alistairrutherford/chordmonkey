@@ -13,6 +13,7 @@ namespace chordmonkey::ui
         addAndMakeVisible (exportHandle);
         keyboardButton.setClickingTogglesState (true);
         keyboardButton.setTooltip ("Show or hide the keyboard at the bottom");
+        keyboardButton.setComponentID ("ui.keys");
         keyboardButton.onClick = [this, showKeyboard] { showKeyboard (keyboardButton.getToggleState()); };
         addAndMakeVisible (keyboardButton);
     }
@@ -53,6 +54,7 @@ namespace chordmonkey::ui
     HeardKey::HeardKey (ChordMonkeyProcessor& p, Bindings& b) : processor (p), bindings (b)
     {
         bindings.bound (params::analyse);
+        setComponentID (params::analyse);         // its Info View entry (which shows its tooltip: what it heard)
         setWantsKeyboardFocus (true);
         setMouseCursor (juce::MouseCursor::PointingHandCursor);
         update();
@@ -387,6 +389,15 @@ namespace chordmonkey::ui
         auto* c = controls.add (new ParamControl (bindings, paramId, label));
         addAndMakeVisible (c);
         return *c;
+    }
+
+    juce::String EffectsPanel::infoKeyAt (juce::Point<int> p) const
+    {
+        static constexpr const char* keys[] = { "card.strum", "card.velocity", "card.arp", "card.voicing", "card.repeat", "card.seq", "card.style" };
+        for (size_t i = 0; i < cards.size(); ++i)
+            if (cards[i].bounds.contains (p))
+                return keys[i];
+        return {};
     }
 
     void EffectsPanel::refresh (const UiModel& m) { steps.setSteps (m.settings.fx.seq.steps()); }

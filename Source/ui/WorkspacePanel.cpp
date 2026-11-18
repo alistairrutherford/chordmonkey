@@ -25,6 +25,7 @@ namespace chordmonkey::ui
         : processor (p), currentPattern (std::move (pattern))
     {
         setTooltip ("Drag the pattern into Live as a MIDI clip: one loop, as it plays (style, voicing, bass, effects). Hold Alt for the chords only");
+        setComponentID ("ui.dragPattern");        // its Info View entry (which shows its tooltip: why not, after an error)
         setMouseCursor (juce::MouseCursor::DraggingHandCursor);
     }
 
@@ -87,11 +88,18 @@ namespace chordmonkey::ui
         setTooltip ("The pattern: drag a chord pad here (or right-click a pad) to add it; click a slot to hear it, "
                     "drag to reorder, right-click for its length, inversion and octave");
         bindings.bound (params::pattern);
+        // The Info View's keys.
+        setComponentID ("area.workspace");
+        chordSetsButton.setComponentID ("ui.chordSets");
+        patternButton.setComponentID ("ui.patternMenu");
+        detectButton.setComponentID (params::detect);
+        cancelDetectButton.setComponentID ("ui.detectCancel");
         for (int i = 0; i < numPatterns; ++i)
         {
             auto& t = tabs[(size_t) i];
             t.setButtonText (patternName (i));
             t.setClickingTogglesState (false);
+            t.setComponentID (params::pattern);
             t.setTooltip ("Pattern " + juce::String (patternName (i)) + " (a change while playing waits for the next bar)");
             t.onClick = [this, i] { bindings.set (params::pattern, (float) i); };
             addAndMakeVisible (t);

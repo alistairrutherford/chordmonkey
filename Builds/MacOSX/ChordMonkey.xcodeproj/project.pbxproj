@@ -28,6 +28,7 @@
 		03A9E5A48A5538FC5A845D8B /* Accelerate.framework */ = {isa = PBXBuildFile; fileRef = 765E217F0299F607B459AC2B; };
 		0446F6FC40FB7F57527A5ED4 /* FactoryPresets.cpp */ = {isa = PBXBuildFile; fileRef = 25D73934945BB05F98BD1793; };
 		0D8793AB62427048B9F93570 /* MetalKit.framework */ = {isa = PBXBuildFile; fileRef = 12356B2D09D22D493A20E058; settings = { ATTRIBUTES = (Weak, ); }; };
+		11FAFD34A54744FB8D6B092E /* InfoView.cpp */ = {isa = PBXBuildFile; fileRef = DF6C70675BD7D5F72EF6E1C9; };
 		1B6205AE223873BA73C853E1 /* include_juce_audio_plugin_client_ARA.cpp */ = {isa = PBXBuildFile; fileRef = E48310FCCC3DF321550420F1; };
 		2962FDB48C1B1FB8D0226E71 /* juce_VST3ManifestHelper.cpp */ = {isa = PBXBuildFile; fileRef = D643F08C466AC567F3F71800; settings = { COMPILER_FLAGS = "-w -DJUCE_SKIP_PRECOMPILED_HEADER"; }; };
 		2D977C5CB3E4C70C586B4E7D /* PresetBar.cpp */ = {isa = PBXBuildFile; fileRef = 0FFE75EC1E7203943AEEA42C; };
@@ -123,6 +124,7 @@
 		435954E8F580F98B46A0F58F /* CoreAudio.framework */ /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
 		45BAD90D7B3C99A2511372A9 /* Transport.h */ /* Transport.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Transport.h; path = ../../Source/core/engine/Transport.h; sourceTree = SOURCE_ROOT; };
 		465E69D0ABA59544388B2887 /* TestPattern.h */ /* TestPattern.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = TestPattern.h; path = ../../Source/core/engine/TestPattern.h; sourceTree = SOURCE_ROOT; };
+		4E981BBEA0289F5A4BE5D26E /* InfoView.h */ /* InfoView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = InfoView.h; path = ../../Source/ui/InfoView.h; sourceTree = SOURCE_ROOT; };
 		5A40C7DC692E089889A5A9E8 /* RomanNumeral.h */ /* RomanNumeral.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = RomanNumeral.h; path = ../../Source/core/theory/RomanNumeral.h; sourceTree = SOURCE_ROOT; };
 		5B5CB52CB32F708772B1F0F5 /* Keyboards.h */ /* Keyboards.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Keyboards.h; path = ../../Source/ui/Keyboards.h; sourceTree = SOURCE_ROOT; };
 		5CAB333568385F091F516C0C /* include_juce_gui_extra.mm */ /* include_juce_gui_extra.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = include_juce_gui_extra.mm; path = ../../JuceLibraryCode/include_juce_gui_extra.mm; sourceTree = SOURCE_ROOT; };
@@ -190,6 +192,7 @@
 		D7E0618FFC3C0692A0374840 /* juce_gui_extra */ /* juce_gui_extra */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_gui_extra; path = /Users/alistairrutherford/Development/JUCE/modules/juce_gui_extra; sourceTree = "<absolute>"; };
 		D82FAE309341796E9FD3ABE8 /* Keyboards.cpp */ /* Keyboards.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Keyboards.cpp; path = ../../Source/ui/Keyboards.cpp; sourceTree = SOURCE_ROOT; };
 		DC16F9CFDEC75F6F4251200C /* Info-VST3.plist */ /* Info-VST3.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "Info-VST3.plist"; path = "Info-VST3.plist"; sourceTree = SOURCE_ROOT; };
+		DF6C70675BD7D5F72EF6E1C9 /* InfoView.cpp */ /* InfoView.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = InfoView.cpp; path = ../../Source/ui/InfoView.cpp; sourceTree = SOURCE_ROOT; };
 		E207F4D8EDE4F3F78B04D572 /* juce_audio_devices */ /* juce_audio_devices */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_audio_devices; path = /Users/alistairrutherford/Development/JUCE/modules/juce_audio_devices; sourceTree = "<absolute>"; };
 		E25249831A28B763D06A152A /* juce_core */ /* juce_core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = juce_core; path = /Users/alistairrutherford/Development/JUCE/modules/juce_core; sourceTree = "<absolute>"; };
 		E3D76120CA60ECB3C02C846C /* PresetBar.h */ /* PresetBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PresetBar.h; path = ../../Source/ui/PresetBar.h; sourceTree = SOURCE_ROOT; };
@@ -424,6 +427,8 @@
 				0FFE75EC1E7203943AEEA42C,
 				600D449F140A7D636FE15AD7,
 				05B3258D26071B165C008E6C,
+				4E981BBEA0289F5A4BE5D26E,
+				DF6C70675BD7D5F72EF6E1C9,
 			);
 			name = ui;
 			sourceTree = "<group>";
@@ -844,6 +849,7 @@
 				31B867E48FF4976D74F1E968,
 				2D977C5CB3E4C70C586B4E7D,
 				6F1AEADA2DC902D7AE3CDDAC,
+				11FAFD34A54744FB8D6B092E,
 				D9C1664FD01215C3BA904D56,
 				78970CA32F8FB985E08AB709,
 				5C694DA5E139C84BBEBC0568,

@@ -20,6 +20,7 @@
         <FILE id="snF015" name="WorkspacePanel.cpp" compile="1" resource="0" file="../../Source/ui/WorkspacePanel.cpp"/>
         <FILE id="snF012" name="FactoryPresets.cpp" compile="1" resource="0" file="../../Source/plugin/FactoryPresets.cpp"/>
         <FILE id="snF013" name="PresetBar.cpp" compile="1" resource="0" file="../../Source/ui/PresetBar.cpp"/>
+        <FILE id="snF900" name="InfoView.cpp" compile="1" resource="0" file="../../Source/ui/InfoView.cpp"/>
     </GROUP>
   </MAINGROUP>
   <MODULES>

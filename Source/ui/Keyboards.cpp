@@ -61,6 +61,7 @@ namespace chordmonkey::ui
     //==========================================================================
     ChordPads::ChordPads (ChordMonkeyProcessor& p) : processor (p), playing (p, true)
     {
+        setComponentID ("display.pads");          // its Info View entry
         setTooltip ("The chords: one per white key and, above them, the black keys' borrowed chords (in any octave). Click or drag across to play; "
                     "drag one down onto the workspace, or right-click it, to add it to the pattern");
     }
@@ -192,6 +193,7 @@ namespace chordmonkey::ui
     //==========================================================================
     OutputKeyboard::OutputKeyboard (ChordMonkeyProcessor& p) : processor (p), playing (p)
     {
+        setComponentID ("display.keyboard");      // its Info View entry
         layout.lo = 21;
         layout.hi = 108;
         labelFont = font (9.0f);

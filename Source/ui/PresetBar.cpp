@@ -113,6 +113,11 @@ namespace chordmonkey::ui
     //==========================================================================
     PresetBar::PresetBar (ChordMonkeyProcessor& p) : processor (p)
     {
+        // Their Info View entries.
+        previous.setComponentID ("ui.prev");
+        next.setComponentID ("ui.next");
+        name.setComponentID ("ui.presetName");
+        save.setComponentID ("ui.save");
         previous.setTooltip ("Previous preset");
         next.setTooltip ("Next preset");
         name.setTooltip ("Presets: click to browse and search");
@@ -205,6 +210,7 @@ namespace chordmonkey::ui
     ExportHandle::ExportHandle (ChordMonkeyProcessor& p) : processor (p)
     {
         setMouseCursor (juce::MouseCursor::DraggingHandCursor);
+        setComponentID ("ui.export");             // its Info View entry (which shows its tooltip: the bars, or why not)
         refresh();
     }
 

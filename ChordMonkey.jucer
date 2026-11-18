@@ -83,6 +83,8 @@
         <FILE id="csF060" name="PresetBar.cpp" compile="1" resource="0" file="Source/ui/PresetBar.cpp"/>
         <FILE id="cmF008" name="WorkspacePanel.h" compile="0" resource="0" file="Source/ui/WorkspacePanel.h"/>
         <FILE id="cmF009" name="WorkspacePanel.cpp" compile="1" resource="0" file="Source/ui/WorkspacePanel.cpp"/>
+        <FILE id="cmF900" name="InfoView.h" compile="0" resource="0" file="Source/ui/InfoView.h"/>
+        <FILE id="cmF901" name="InfoView.cpp" compile="1" resource="0" file="Source/ui/InfoView.cpp"/>
       </GROUP>
     </GROUP>
   </MAINGROUP>

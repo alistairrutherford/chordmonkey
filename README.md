@@ -5,7 +5,10 @@ Scaler 2: a scale's chords, chord sets, patterns of chords that play in time wit
 Keys-Lock, Detect, substitutes, and drag-out to MIDI clips. It's a fork of
 [ChordChimp](../chordchimp); the plan and its status are in [PLAN.md](PLAN.md).
 
-![The ChordMonkey editor](docs/editor.png)
+![The ChordMonkey editor, with the Info View along the bottom describing Bind](docs/editor.png)
+
+Point at any control, pad, card or the workspace and the **Info View** strip along the bottom of the
+editor says what it does and what its settings mean, like Live's own Info View.
 
 **Status:** all ten phases of [PLAN.md](PLAN.md) are done (2026-11-04), each checked in Live 12.4.16
 through the Ableton MCP bridge and by hand.
